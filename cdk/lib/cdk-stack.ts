@@ -340,6 +340,25 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Create CloudWatch Logs role for API Gateway
+    const apiGatewayCloudWatchRole = new iam.Role(this, 'ApiGatewayCloudWatchRole', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs')
+      ],
+    });
+
+    // Grant API Gateway CloudWatch Logs permissions
+    new apigateway.CfnAccount(this, 'ApiGatewayAccount', {
+      cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn,
+    });
+
+    // Add suppression for API Gateway CloudWatch role using AWS managed policy
+    NagSuppressions.addResourceSuppressions(apiGatewayCloudWatchRole, [{
+      id: 'AwsSolutions-IAM4',
+      reason: 'API Gateway requires AWS managed policy for CloudWatch Logs access.',
+    }]);
+
     // Create API Gateway
     const api = new apigateway.RestApi(this, 'UnderwritingApi', {
       restApiName: 'ai-underwriting-api',

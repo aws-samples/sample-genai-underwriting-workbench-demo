@@ -5,6 +5,8 @@ A demonstration project showcasing the power of Amazon Bedrock and Claude 3.7 So
 This solution leverages intelligent document processing to streamline the underwriting process by automatically extracting, analyzing, and making accessible critical information from insurance applications and related documents.
 
 ## Table of Contents
+- [genai-underwriting-workbench-demo](#genai-underwriting-workbench-demo)
+  - [Table of Contents](#table-of-contents)
 - [Business Purpose](#business-purpose)
 - [Key Features](#key-features)
   - [Document Analysis](#document-analysis)
@@ -12,9 +14,15 @@ This solution leverages intelligent document processing to streamline the underw
   - [Chat Interface](#chat-interface)
 - [Deployment](#deployment)
   - [Prerequisites for Deployment](#prerequisites-for-deployment)
+  - [Clone the repository and navigate to the project directory](#clone-the-repository-and-navigate-to-the-project-directory)
   - [Bootstrap and Deploy the CDK Stack](#bootstrap-and-deploy-the-cdk-stack)
 - [Technical Overview](#technical-overview)
+  - [Demo Workflow](#demo-workflow)
+  - [Project Components](#project-components)
   - [Development Setup](#development-setup)
+    - [Frontend](#frontend)
+  - [Contributors](#contributors)
+
 
 # Business Purpose
 
@@ -123,7 +131,7 @@ This process will:
 
 # Technical Overview
 
-
+![underwriter analysis screenshot](assets/workflow-diagram.png)
 
 ## Demo Workflow
 
@@ -135,6 +143,8 @@ This demo streamlines the underwriting process through a powerful AI-driven work
 4.  **Act**: Underwriters can then interact with the analyzed data through a chat interface, review insights, and make informed decisions, leveraging the AI-generated analysis to accelerate their workflow.
 
 ## Project Components
+
+![underwriter analysis screenshot](assets/architecture.png)
 
 The project consists of three main components:
 
@@ -158,27 +168,6 @@ The project consists of three main components:
 
 For local development, follow these steps:
 
-### Backend
-1. Ensure you have Python 3.8+ installed.
-2. Install required Python packages:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-3. Install system dependencies:
-   - `pdf2image` requires [Poppler](https://poppler.freedesktop.org/):
-     ```bash
-     # macOS
-     brew install poppler
-
-     # Ubuntu
-     sudo apt-get install poppler-utils
-     ```
-4. Start the Flask server:
-   ```bash
-   python backend/app.py
-   ```
-   The server will run in debug mode at [http://localhost:5000](http://localhost:5000).
-
 ### Frontend
 1. Navigate to the frontend directory and install dependencies:
    ```bash
@@ -189,3 +178,8 @@ For local development, follow these steps:
    ```bash
    npm start
    ```
+
+## Contributors
+Thanks to all the contributors for building, reviewing and testing.
+
+[![Contributors](https://contrib.rocks/image?repo=aws-samples/sample-genai-underwriting-workbench-demo)](https://github.com/aws-samples/sample-genai-underwriting-workbench-demo/graphs/contributors)
