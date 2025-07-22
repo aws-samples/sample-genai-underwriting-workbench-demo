@@ -223,6 +223,11 @@ const getDocumentIcon = (documentType: string) => {
 
 // Define status mapping for user-friendly display
 const STATUS_MAPPING = {
+  'CREATED': {
+    step: 1,
+    phase: 'Job Created',
+    details: 'Job has been created and is waiting for document upload to complete...'
+  },
   'UPLOAD_PENDING': {
     step: 1,
     phase: 'Upload Pending',
@@ -276,7 +281,6 @@ export function JobPage({ jobId }: JobPageProps) {
   const [numPages, setNumPagesState] = useState<number | null>(null)
   const [currentPage, setCurrentPageState] = useState<number>(1)
   const [activeTab, setActiveTab] = useState<TabType>('grouped')
-  const [streamConnected, setStreamConnected] = useState(false)
   const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null)
   const [isFetchingPdfUrl, setIsFetchingPdfUrl] = useState<boolean>(false);
   const [pdfBlob, setPdfBlobState] = useState<Blob | null>(null)
@@ -553,7 +557,8 @@ export function JobPage({ jobId }: JobPageProps) {
       };
       setAnalysisData(newAnalysisData);
 
-      fetchDocumentUrl(); // Always fetch the document URL after job data is received
+      // fetchDocumentUrl(); // Always fetch the document URL after job data is received
+      // REMOVED from here to decouple from polling loop
 
       // ADDED - Store document type from API response
       if (jobApiData.documentType) {
@@ -657,7 +662,7 @@ export function JobPage({ jobId }: JobPageProps) {
         setIsLoadingJobDetails(false);
       }
     }
-  }, [jobId, fetchDocumentUrl]);
+  }, [jobId]);
 
   useEffect(() => {
     
@@ -671,6 +676,14 @@ export function JobPage({ jobId }: JobPageProps) {
       // The sessionStorage item will expire or be overwritten naturally.
     };
   }, [jobId, fetchJobDetailsAndUpdateState]);
+
+  // This effect will run once when analysisData is first populated,
+  // to fetch the document URL without being in the polling-related effect.
+  useEffect(() => {
+    if (analysisData && !pdfDownloadUrl) {
+      fetchDocumentUrl();
+    }
+  }, [analysisData, pdfDownloadUrl, fetchDocumentUrl]);
 
   useEffect(() => {
     const calculatePdfWidth = () => {
@@ -845,7 +858,7 @@ export function JobPage({ jobId }: JobPageProps) {
     setMessages(updatedMessages); setNewMessage(''); setIsTyping(true);
     try {
       const messagesToSend = updatedMessages.filter(msg => msg.id !== '1');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/${jobId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/${jobId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: messagesToSend })
       });

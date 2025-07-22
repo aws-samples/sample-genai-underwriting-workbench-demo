@@ -15,12 +15,10 @@ BEDROCK_CHAT_MODEL_ID = os.environ.get('BEDROCK_CHAT_MODEL_ID', 'us.anthropic.cl
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
     
-    # Extract HTTP method and path from the event
     http_method = event.get('httpMethod', '')
     resource = event.get('resource', '')
     path_parameters = event.get('pathParameters', {}) or {}
     
-    # Set CORS headers for all responses
     headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
@@ -28,58 +26,35 @@ def lambda_handler(event, context):
         'Content-Type': 'application/json'
     }
     
-    # Handle OPTIONS requests for CORS preflight
     if http_method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps({'message': 'CORS preflight request successful'})
-        }
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'message': 'CORS preflight request successful'})}
     
     try:
-        # Chat endpoint - "/chat/{jobId}"
-        if http_method == 'POST' and resource == '/chat/{jobId}':
+        if http_method == 'POST' and resource == '/api/chat/{jobId}':
             job_id = path_parameters.get('jobId')
             if not job_id:
-                return {
-                    'statusCode': 400,
-                    'headers': headers,
-                    'body': json.dumps({'error': 'Missing jobId parameter'})
-                }
+                print("Returning 400: Missing jobId parameter")
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Missing jobId parameter'})}
             
-            # Parse request body for chat message
             body = json.loads(event.get('body', '{}'))
-            message = body.get('message')
+            messages = body.get('messages') # Expect 'messages' array
             
-            if not message:
-                return {
-                    'statusCode': 400,
-                    'headers': headers,
-                    'body': json.dumps({'error': 'Missing message in request body'})
-                }
+            if not messages or not isinstance(messages, list):
+                error_msg = 'Missing or invalid "messages" in request body'
+                print(f"Returning 400: {error_msg}. Body received: {json.dumps(body)}")
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': error_msg})}
             
-            # Process the chat request
-            response = process_chat(job_id, message)
-            return {
-                'statusCode': 200,
-                'headers': headers,
-                'body': json.dumps(response)
-            }
+            # Process the chat request with conversation history
+            response = process_chat(job_id, messages)
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(response)}
             
         else:
-            return {
-                'statusCode': 404,
-                'headers': headers,
-                'body': json.dumps({'error': 'Not found'})
-            }
+            print(f"Returning 404: Not found for resource {resource} and method {http_method}")
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
             
     except Exception as e:
         print(f"Error processing request: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': headers,
-            'body': json.dumps({'error': f'Internal server error: {str(e)}'})
-        }
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': f'Internal server error: {str(e)}'})}
 
 def get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output):
     """Generate a system prompt based on document type and insurance type"""
@@ -159,7 +134,7 @@ def get_chat_system_prompt(document_type, insurance_type, extracted_data, analys
     # Combine all sections for the complete prompt
     return base_context + specialized_context + common_instructions
 
-def process_chat(job_id, message):
+def process_chat(job_id, messages):
     """
     Process a chat message for a specific job.
     Retrieves job data from DynamoDB and uses it to provide context for the LLM.
@@ -191,24 +166,26 @@ def process_chat(job_id, message):
             extracted_data = {}
             analysis_output = {}
         
-        # Define common tools for all insurance types
+        # Define common tools for all insurance types, now with the correct toolSpec structure
         common_tools = [
             {
-                "name": "calculate_bmi",
-                "description": "Calculate BMI (Body Mass Index) given height and weight",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "height_cm": {
-                            "type": "number",
-                            "description": "Height in centimeters"
+                "toolSpec": {
+                    "name": "calculate_bmi",
+                    "description": "Calculate BMI (Body Mass Index) given height and weight",
+                    "inputSchema": {"json": {
+                        "type": "object",
+                        "properties": {
+                            "height_cm": {
+                                "type": "number",
+                                "description": "Height in centimeters"
+                            },
+                            "weight_kg": {
+                                "type": "number",
+                                "description": "Weight in kilograms"
+                            }
                         },
-                        "weight_kg": {
-                            "type": "number",
-                            "description": "Weight in kilograms"
-                        }
-                    },
-                    "required": ["height_cm", "weight_kg"]
+                        "required": ["height_cm", "weight_kg"]
+                    }}
                 }
             }
         ]
@@ -217,29 +194,31 @@ def process_chat(job_id, message):
         if insurance_type == "life":
             life_tools = [
                 {
-                    "name": "calculate_mortality_risk",
-                    "description": "Calculate a simplified mortality risk score based on age, gender, and health factors",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "age": {
-                                "type": "number",
-                                "description": "Age in years"
+                    "toolSpec": {
+                        "name": "calculate_mortality_risk",
+                        "description": "Calculate a simplified mortality risk score based on age, gender, and health factors",
+                        "inputSchema": {"json": {
+                            "type": "object",
+                            "properties": {
+                                "age": {
+                                    "type": "number",
+                                    "description": "Age in years"
+                                },
+                                "gender": {
+                                    "type": "string",
+                                    "description": "Gender (male or female)"
+                                },
+                                "smoker": {
+                                    "type": "boolean",
+                                    "description": "Whether the person is a smoker"
+                                },
+                                "bmi": {
+                                    "type": "number",
+                                    "description": "Body Mass Index"
+                                }
                             },
-                            "gender": {
-                                "type": "string",
-                                "description": "Gender (male or female)"
-                            },
-                            "smoker": {
-                                "type": "boolean",
-                                "description": "Whether the person is a smoker"
-                            },
-                            "bmi": {
-                                "type": "number",
-                                "description": "Body Mass Index"
-                            }
-                        },
-                        "required": ["age", "gender", "smoker", "bmi"]
+                            "required": ["age", "gender", "smoker", "bmi"]
+                        }}
                     }
                 }
             ]
@@ -247,29 +226,31 @@ def process_chat(job_id, message):
         elif insurance_type == "property_casualty":
             pc_tools = [
                 {
-                    "name": "calculate_property_premium",
-                    "description": "Estimate a simplified property insurance premium based on basic factors",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "property_value": {
-                                "type": "number",
-                                "description": "Property value in dollars"
+                    "toolSpec": {
+                        "name": "calculate_property_premium",
+                        "description": "Estimate a simplified property insurance premium based on basic factors",
+                        "inputSchema": {"json": {
+                            "type": "object",
+                            "properties": {
+                                "property_value": {
+                                    "type": "number",
+                                    "description": "Property value in dollars"
+                                },
+                                "construction_type": {
+                                    "type": "string",
+                                    "description": "Type of construction (e.g., wood frame, masonry, etc.)"
+                                },
+                                "protection_class": {
+                                    "type": "number",
+                                    "description": "Fire protection class (1-10, where 1 is best)"
+                                },
+                                "deductible": {
+                                    "type": "number",
+                                    "description": "Deductible amount in dollars"
+                                }
                             },
-                            "construction_type": {
-                                "type": "string",
-                                "description": "Type of construction (e.g., wood frame, masonry, etc.)"
-                            },
-                            "protection_class": {
-                                "type": "number",
-                                "description": "Fire protection class (1-10, where 1 is best)"
-                            },
-                            "deductible": {
-                                "type": "number",
-                                "description": "Deductible amount in dollars"
-                            }
-                        },
-                        "required": ["property_value", "construction_type", "protection_class", "deductible"]
+                            "required": ["property_value", "construction_type", "protection_class", "deductible"]
+                        }}
                     }
                 }
             ]
@@ -280,25 +261,30 @@ def process_chat(job_id, message):
         # Create the system prompt with context
         system_prompt = get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output)
         
-        # Prepare the conversation for Claude
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": message
-            }
-        ]
+        # Prepare the conversation for Claude, converting frontend format to Bedrock format
+        def format_messages_for_bedrock(messages_from_frontend):
+            bedrock_messages = []
+            for msg in messages_from_frontend:
+                # In Bedrock Converse API, the roles are 'user' and 'assistant'.
+                # Frontend sends 'user' and 'ai'.
+                role = 'assistant' if msg.get('sender') == 'ai' else 'user'
+                content = msg.get('text', '')
+                # Content must be a list of content blocks
+                bedrock_messages.append({'role': role, 'content': [{'text': content}]})
+            return bedrock_messages
+
+        messages_for_bedrock = format_messages_for_bedrock(messages)
+
+        print(f"Sending messages to Bedrock: {json.dumps(messages_for_bedrock)}")
         
-        # Call Claude via Bedrock
+        # Call Claude via Bedrock with corrected structure
         response = bedrock_runtime.converse(
             modelId=BEDROCK_CHAT_MODEL_ID,
-            messages=messages,
-            tools=tools,
+            system=[{'text': system_prompt}],  # Pass system prompt here
+            messages=messages_for_bedrock,     # Pass just user/assistant messages here
             toolConfig={
-                "toolChoice": "auto"
+                'tools': tools,                # Pass tools inside toolConfig
+                'toolChoice': {'auto': {}}     # Pass toolChoice as a dict
             },
             inferenceConfig={
                 "maxTokens": 2048,
@@ -306,201 +292,113 @@ def process_chat(job_id, message):
             }
         )
         
+        print(f"Bedrock response: {json.dumps(response)}")
+
         # Process the response
         output_message = response.get('output', {}).get('message', {})
+        content_blocks = output_message.get('content', [])
         assistant_response = ""
         tool_calls = []
         
-        # Handle text content
-        for content_item in output_message.get('content', []):
-            if content_item.get('type') == 'text':
-                assistant_response += content_item.get('text', '')
-        
-        # Handle tool calls
-        for tool_call in output_message.get('toolCalls', []):
-            tool_name = tool_call.get('name')
+        for block in content_blocks:
+            if 'text' in block:
+                assistant_response += block.get('text', '')
             
-            if tool_name == 'calculate_bmi':
-                try:
-                    params = json.loads(tool_call.get('parameters', '{}'))
-                    height_cm = params.get('height_cm', 0)
-                    weight_kg = params.get('weight_kg', 0)
-                    bmi = weight_kg / ((height_cm/100) ** 2)
-                    bmi_rounded = round(bmi, 1)
-                    
-                    # Interpret BMI
-                    bmi_interpretation = "Unknown"
-                    if bmi < 18.5:
-                        bmi_interpretation = "Underweight"
-                    elif bmi >= 18.5 and bmi < 25:
-                        bmi_interpretation = "Normal weight"
-                    elif bmi >= 25 and bmi < 30:
-                        bmi_interpretation = "Overweight"
-                    elif bmi >= 30:
-                        bmi_interpretation = "Obese"
-                    
-                    tool_result = {
-                        'name': 'calculate_bmi',
-                        'input': {
-                            'height_cm': height_cm,
-                            'weight_kg': weight_kg
-                        },
-                        'output': {
-                            'bmi': bmi_rounded,
-                            'interpretation': bmi_interpretation
-                        }
-                    }
-                    
-                    tool_calls.append(tool_result)
-                    
-                    # Add BMI result to the assistant's response
-                    bmi_response = f"\n\nBMI Calculation: {bmi_rounded} ({bmi_interpretation})"
-                    assistant_response += bmi_response
-                except Exception as e:
-                    print(f"Error processing BMI calculation: {str(e)}")
-                    tool_calls.append({
-                        'name': 'calculate_bmi',
-                        'error': str(e)
-                    })
-            
-            elif tool_name == 'calculate_mortality_risk':
-                try:
-                    params = json.loads(tool_call.get('parameters', '{}'))
-                    age = params.get('age', 0)
-                    gender = params.get('gender', '').lower()
-                    smoker = params.get('smoker', False)
-                    bmi = params.get('bmi', 0)
-                    
-                    # Basic mortality risk calculation (simplified for demo)
-                    # Start with base risk
-                    base_risk = age / 100.0
-                    
-                    # Adjust for gender (simplified)
-                    gender_factor = 1.0 if gender == 'male' else 0.85
-                    
-                    # Adjust for smoking
-                    smoking_factor = 1.8 if smoker else 1.0
-                    
-                    # Adjust for BMI (simplified)
-                    bmi_factor = 1.0
-                    if bmi < 18.5:
-                        bmi_factor = 1.2
-                    elif bmi >= 25 and bmi < 30:
-                        bmi_factor = 1.1
-                    elif bmi >= 30 and bmi < 35:
-                        bmi_factor = 1.3
-                    elif bmi >= 35:
-                        bmi_factor = 1.6
-                    
-                    # Calculate final risk score (0-10 scale)
-                    risk_score = min(10, base_risk * gender_factor * smoking_factor * bmi_factor * 10)
-                    risk_score_rounded = round(risk_score, 1)
-                    
-                    # Interpret risk score
-                    if risk_score < 3:
-                        risk_interpretation = "Low risk"
-                    elif risk_score < 6:
-                        risk_interpretation = "Moderate risk"
-                    elif risk_score < 8:
-                        risk_interpretation = "High risk"
-                    else:
-                        risk_interpretation = "Very high risk"
-                    
-                    tool_result = {
-                        'name': 'calculate_mortality_risk',
-                        'input': {
-                            'age': age,
-                            'gender': gender,
-                            'smoker': smoker,
-                            'bmi': bmi
-                        },
-                        'output': {
-                            'risk_score': risk_score_rounded,
-                            'interpretation': risk_interpretation
-                        }
-                    }
-                    
-                    tool_calls.append(tool_result)
-                    
-                    # Add result to response
-                    risk_response = f"\n\nMortality Risk Assessment: {risk_score_rounded}/10 ({risk_interpretation})"
-                    assistant_response += risk_response
-                    
-                except Exception as e:
-                    print(f"Error processing mortality risk calculation: {str(e)}")
-                    tool_calls.append({
-                        'name': 'calculate_mortality_risk',
-                        'error': str(e)
-                    })
-                    
-            elif tool_name == 'calculate_property_premium':
-                try:
-                    params = json.loads(tool_call.get('parameters', '{}'))
-                    property_value = params.get('property_value', 0)
-                    construction_type = params.get('construction_type', '').lower()
-                    protection_class = params.get('protection_class', 5)
-                    deductible = params.get('deductible', 1000)
-                    
-                    # Simplified premium calculation formula
-                    # Base rate per $1000 of property value
-                    base_rate = 3.5
-                    
-                    # Construction type factors
-                    construction_factors = {
-                        'wood frame': 1.2,
-                        'masonry': 0.9,
-                        'fire resistive': 0.7,
-                        'mixed': 1.0
-                    }
-                    construction_factor = construction_factors.get(construction_type, 1.0)
-                    
-                    # Protection class adjustment (1 is best, 10 is worst)
-                    protection_factor = 0.7 + (protection_class - 1) * 0.1
-                    
-                    # Deductible credit
-                    deductible_factor = 1.0 - (math.log(deductible/500) * 0.05)
-                    
-                    # Calculate annual premium
-                    annual_premium = property_value / 1000 * base_rate * construction_factor * protection_factor * deductible_factor
-                    annual_premium_rounded = round(annual_premium, 2)
-                    
-                    tool_result = {
-                        'name': 'calculate_property_premium',
-                        'input': {
-                            'property_value': property_value,
-                            'construction_type': construction_type,
-                            'protection_class': protection_class,
-                            'deductible': deductible
-                        },
-                        'output': {
-                            'annual_premium': annual_premium_rounded,
-                            'factors': {
-                                'construction': construction_factor,
-                                'protection': protection_factor,
-                                'deductible': deductible_factor
-                            }
-                        }
-                    }
-                    
-                    tool_calls.append(tool_result)
-                    
-                    # Add result to response
-                    premium_response = f"\n\nEstimated Annual Premium: ${annual_premium_rounded:.2f}"
-                    assistant_response += premium_response
-                    
-                except Exception as e:
-                    print(f"Error processing property premium calculation: {str(e)}")
-                    tool_calls.append({
-                        'name': 'calculate_property_premium',
-                        'error': str(e)
-                    })
-        
+            elif 'toolUse' in block:
+                tool_use_block = block['toolUse']
+                tool_name = tool_use_block.get('name')
+                tool_input = tool_use_block.get('input', {})
+                print(f"Executing tool: {tool_name} with input: {json.dumps(tool_input)}")
+
+                if tool_name == 'calculate_bmi':
+                    try:
+                        height_cm = tool_input.get('height_cm', 0)
+                        weight_kg = tool_input.get('weight_kg', 0)
+                        bmi = weight_kg / ((height_cm/100) ** 2)
+                        bmi_rounded = round(bmi, 1)
+                        
+                        bmi_interpretation = "Unknown"
+                        if bmi < 18.5: bmi_interpretation = "Underweight"
+                        elif 18.5 <= bmi < 25: bmi_interpretation = "Normal weight"
+                        elif 25 <= bmi < 30: bmi_interpretation = "Overweight"
+                        elif bmi >= 30: bmi_interpretation = "Obese"
+                        
+                        tool_result = {'name': 'calculate_bmi', 'input': tool_input, 'output': {'bmi': bmi_rounded, 'interpretation': bmi_interpretation}}
+                        tool_calls.append(tool_result)
+                        
+                        assistant_response += f"\n\nBMI Calculation: {bmi_rounded} ({bmi_interpretation})"
+                    except Exception as e:
+                        print(f"Error processing BMI calculation: {str(e)}")
+                        tool_calls.append({'name': 'calculate_bmi', 'error': str(e)})
+                
+                elif tool_name == 'calculate_mortality_risk':
+                    try:
+                        age = tool_input.get('age', 0)
+                        gender = tool_input.get('gender', '').lower()
+                        smoker = tool_input.get('smoker', False)
+                        bmi = tool_input.get('bmi', 0)
+                        
+                        base_risk = age / 100.0
+                        gender_factor = 1.0 if gender == 'male' else 0.85
+                        smoking_factor = 1.8 if smoker else 1.0
+                        bmi_factor = 1.0
+                        if bmi < 18.5: bmi_factor = 1.2
+                        elif 25 <= bmi < 30: bmi_factor = 1.1
+                        elif 30 <= bmi < 35: bmi_factor = 1.3
+                        elif bmi >= 35: bmi_factor = 1.6
+                        
+                        risk_score = min(10, base_risk * gender_factor * smoking_factor * bmi_factor * 10)
+                        risk_score_rounded = round(risk_score, 1)
+                        
+                        if risk_score < 3: risk_interpretation = "Low risk"
+                        elif risk_score < 6: risk_interpretation = "Moderate risk"
+                        elif risk_score < 8: risk_interpretation = "High risk"
+                        else: risk_interpretation = "Very high risk"
+                        
+                        tool_result = {'name': 'calculate_mortality_risk', 'input': tool_input, 'output': {'risk_score': risk_score_rounded, 'interpretation': risk_interpretation}}
+                        tool_calls.append(tool_result)
+                        
+                        assistant_response += f"\n\nMortality Risk Assessment: {risk_score_rounded}/10 ({risk_interpretation})"
+                    except Exception as e:
+                        print(f"Error processing mortality risk calculation: {str(e)}")
+                        tool_calls.append({'name': 'calculate_mortality_risk', 'error': str(e)})
+                        
+                elif tool_name == 'calculate_property_premium':
+                    try:
+                        property_value = tool_input.get('property_value', 0)
+                        construction_type = tool_input.get('construction_type', '').lower()
+                        protection_class = tool_input.get('protection_class', 5)
+                        deductible = tool_input.get('deductible', 1000)
+                        
+                        base_rate = 3.5
+                        construction_factors = {'wood frame': 1.2, 'masonry': 0.9, 'fire resistive': 0.7, 'mixed': 1.0}
+                        construction_factor = construction_factors.get(construction_type, 1.0)
+                        protection_factor = 0.7 + (protection_class - 1) * 0.1
+                        deductible_factor = 1.0 - (math.log(deductible/500) * 0.05)
+                        
+                        annual_premium = property_value / 1000 * base_rate * construction_factor * protection_factor * deductible_factor
+                        annual_premium_rounded = round(annual_premium, 2)
+                        
+                        tool_result = {'name': 'calculate_property_premium', 'input': tool_input, 'output': {'annual_premium': annual_premium_rounded}}
+                        tool_calls.append(tool_result)
+                        
+                        assistant_response += f"\n\nEstimated Annual Premium: ${annual_premium_rounded:.2f}"
+                    except Exception as e:
+                        print(f"Error processing property premium calculation: {str(e)}")
+                        tool_calls.append({'name': 'calculate_property_premium', 'error': str(e)})
+
         # Log the interaction in DynamoDB
         try:
             timestamp_now = datetime.now(timezone.utc).isoformat()
+            
+            # Get the last user message for logging
+            last_user_message = ""
+            if messages and messages[-1].get('sender') == 'user':
+                last_user_message = messages[-1].get('text', '')
+
             chat_interaction = {
                 'timestamp': timestamp_now,
-                'user_message': message,
+                'user_message': last_user_message,
                 'assistant_response': assistant_response
             }
             
@@ -518,7 +416,7 @@ def process_chat(job_id, message):
                     ':empty_list': {'L': []},
                     ':interaction': {'L': [{'M': {
                         'timestamp': {'S': timestamp_now},
-                        'user_message': {'S': message},
+                        'user_message': {'S': last_user_message},
                         'assistant_response': {'S': assistant_response}
                     }}]}
                 }
@@ -528,7 +426,6 @@ def process_chat(job_id, message):
         
         return {
             'jobId': job_id,
-            'message': message,
             'response': assistant_response,
             'toolCalls': tool_calls
         }
