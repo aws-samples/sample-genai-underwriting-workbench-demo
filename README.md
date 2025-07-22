@@ -1,6 +1,6 @@
 # genai-underwriting-workbench-demo
 
-A demonstration project showcasing the power of Amazon Bedrock and advanced AI models like Claude 3.7 Sonnet in transforming life insurance underwriting workflows. This solution leverages intelligent document processing to streamline the underwriting process by automatically extracting, analyzing, and making accessible critical information from insurance applications and related documents.
+A demonstration project showcasing the power of Amazon Bedrock and Claude 3.7 Sonnet in transforming life insurance underwriting workflows. This solution leverages intelligent document processing to streamline the underwriting process by automatically extracting, analyzing, and making accessible critical information from insurance applications and related documents.
 
 ## Table of Contents
 - [Business Purpose](#business-purpose)
@@ -184,4 +184,6 @@ For local development, follow these steps:
    npm install
    ```
 2. Start the development server:
+   ```bash
+   npm start
    ```
