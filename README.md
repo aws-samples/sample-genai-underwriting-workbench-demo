@@ -159,6 +159,7 @@ The project consists of three main components:
   - **API Gateway (api-handler Lambda)**: Handles all API requests, including document uploads (via presigned S3 URLs), retrieving job statuses, and fetching analysis results.
   - **Document Extraction (bedrock-extract Lambda)**: Triggered by new document uploads to S3. It converts PDF documents to images, extracts key-value information from each page using Amazon Bedrock's Claude 3 model, classifies pages, and stores the raw extracted data.
   - **Document Analysis (analyze Lambda)**: Processes the extracted data from the `bedrock-extract` function. It uses Amazon Bedrock's Claude 3.5 Sonnet model to perform comprehensive underwriting analysis, identifying risks, discrepancies, and generating final recommendations.
+  - **Agentic Actions (act Lambda)**: Uses the [Strands Agents SDK](https://strandsagents.com/) to perform agentic actions, such as auto declining or requesting additional documentation. 
   - **Orchestration**: AWS Step Functions coordinate the flow between the document upload, extraction, and analysis steps, ensuring a robust and scalable workflow.
   - **Data Storage**: DynamoDB is used to store job metadata, extracted data, and the final analysis results, while S3 is used for raw document storage.
 
