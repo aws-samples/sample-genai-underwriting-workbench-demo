@@ -1,8 +1,10 @@
-# genai-underwriting-workbench-demo
+# 🤖 genai-underwriting-workbench-demo
 
 A demonstration project showcasing the power of Amazon Bedrock and Claude 3.7 Sonnet in transforming life insurance underwriting workflows. 
 
 This solution leverages intelligent document processing to streamline the underwriting process by automatically extracting, analyzing, and making accessible critical information from insurance applications and related documents.
+
+👉 Interested in learning more about how to build this solution? Check out our workshop: [Build an AI-Powered Underwriting Assistant with Amazon Bedrock](https://catalog.us-east-1.prod.workshops.aws/workshops/650f50d9-ca18-486d-a7e0-edda5e0416ce/en-US)
 
 ## Table of Contents
 - [genai-underwriting-workbench-demo](#genai-underwriting-workbench-demo)
@@ -25,20 +27,20 @@ This solution leverages intelligent document processing to streamline the underw
   - [Contributors](#contributors)
 
 
-# Business Purpose
+# 💼 Business Purpose
 
 This demo addresses a key challenge in life insurance underwriting: the time-consuming process of reviewing lengthy applications and related documentation. By combining Amazon Bedrock's capabilities with advanced AI models, the solution helps underwriters:
 
-- Reduce time spent on manual document review
-- Automatically extract and organize relevant information from complex documents
-- Surface key insights and potential risk factors
-- Enable natural language interaction with document contents
-- Increase consistency in information extraction
-- Allow underwriters to focus on decision-making rather than information gathering
+- 🚀 Reduce time spent on manual document review
+- 📊 Automatically extract and organize relevant information from complex documents
+- 🔍 Surface key insights and potential risk factors
+- 💬 Enable natural language interaction with document contents
+- ✅ Increase consistency in information extraction
+- 🎯 Allow underwriters to focus on decision-making rather than information gathering
 
-# Key Features
+# ✨ Key Features
 
-## Document Analysis
+## 📄 Document Analysis
 - Page-by-page analysis of insurance applications and supporting documents
 - Efficient batch processing of multiple pages at a time to optimize performance and resource usage
 - Intelligent extraction of key data points from each page, enabling comprehensive analysis without token limitations
@@ -46,7 +48,7 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 
 ![dashboard screenshot](assets/screen1.png)
 
-## Underwriter Analysis
+## 📊 Underwriter Analysis
 - AI-driven analysis of the document to detect discrepancies and extract underwriting-relevant insights
 - Evaluation of medical history, medications, and lifestyle factors to identify risk indicators
 - Automated identification of potential risk factors and summary of key findings
@@ -55,7 +57,7 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 
 ![underwriter analysis screenshot](assets/screen2.png)
 
-## Chat Interface
+## 💬 Chat Interface
 - Natural language chat interface for querying document contents
 - Context-aware responses leveraging the extracted document insights
 - Persistent chat history ensuring coherent conversation flow
@@ -64,52 +66,52 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 
 ![underwriter analysis screenshot](assets/screen3.png)
 
-## Sample Documents
+## 📁 Sample Documents
 
 We have included sample PDF documents in the `sample_documents/` folder. These can be used to test the application's document processing capabilities:
 - `life_submission.pdf`: A sample life insurance application.
 - `p&c_submission.pdf`: A sample property & casualty insurance application.
 
-# Deployment
+# 🚀 Deployment
 
 The project is designed to be deployed on AWS using the AWS Cloud Development Kit (CDK) for a seamless deployment of both backend and frontend services along with all necessary AWS infrastructure.
 
-## Prerequisites for Deployment
+## ✅ Prerequisites for Deployment
 
-- **Docker**: Required for containerization
+- **🐳 Docker**: Required for containerization
   - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for your OS
   - Verify the installation by running `docker run hello-world`
 
-- **AWS CLI**: Install and configure with your credentials:
+- **☁️ AWS CLI**: Install and configure with your credentials:
   ```bash
   aws configure  # You'll need access key, secret key, default region (us-east-1 recommended)
   ```
 
-- **Node.js and npm**: Ensure you have Node.js (version 14 or later) and npm installed
+- **📦 Node.js and npm**: Ensure you have Node.js (version 14 or later) and npm installed
   ```bash
   node --version  # Should be >= 14
   npm --version
   ```
 
-- **AWS CDK**: Install globally:
+- **🏗️ AWS CDK**: Install globally:
   ```bash
   npm install -g aws-cdk
   cdk --version  # Verify installation
   ```
 
-- **CDK Dependencies**: From the `cdk` directory, install necessary packages:
+- **📋 CDK Dependencies**: From the `cdk` directory, install necessary packages:
   ```bash
   cd cdk
   npm install
   ```
 
-## Clone the repository and navigate to the project directory
+## 📥 Clone the repository and navigate to the project directory
 ```bash
 git clone https://github.com/aws-samples/sample-genai-underwriting-workbench-demo/
 cd sample-genai-underwriting-workbench-demo
 ```
 
-## Bootstrap and Deploy the CDK Stack
+## ⚙️ Bootstrap and Deploy the CDK Stack
 
 1. If necessary, bootstrap your AWS environment (required once per account/region):
 ```bash
@@ -136,20 +138,21 @@ This process will:
 
 
 
-# Technical Overview
+# 🏗️ Technical Overview
 
 ![underwriter analysis screenshot](assets/workflow-diagram.png)
 
-## Demo Workflow
+## 🔄 Demo Workflow
 
 This demo streamlines the underwriting process through a powerful AI-driven workflow, which can be broken down into four key stages:
 
-1.  **Classify**: Incoming documents are first classified to determine their type (e.g., application, medical report, financial statement). This ensures the correct processing path and relevant extraction models are applied.
-2.  **Extract**: Key information and data points are extracted from the classified documents. This includes details like applicant information, medical history, financial data, and other relevant underwriting criteria.
-3.  **Analyze**: The extracted data is then analyzed by advanced AI models to identify potential risks, discrepancies, and generate comprehensive underwriting insights. This stage highlights critical information and suggests recommendations.
-4.  **Act**: Underwriters can then interact with the analyzed data through a chat interface, review insights, and make informed decisions, leveraging the AI-generated analysis to accelerate their workflow.
+1. **Ingest**: Incoming documents are uploaded to S3.
+2. **Classify**: Documents are then classified to determine their type (e.g., application, medical report, financial statement). This ensures the correct processing path and relevant extraction models are applied.
+3. **Extract**: Key information and data points are extracted from the classified documents. This includes details like applicant information, medical history, financial data, and other relevant underwriting criteria.
+4. **Analyze**: The extracted data is then analyzed by advanced AI models to identify potential risks, discrepancies, and generate comprehensive underwriting insights. This stage highlights critical information and suggests recommendations.
+5. **Act**: Underwriters can then interact with the analyzed data through a chat interface, review insights, and make informed decisions, leveraging the AI-generated analysis to accelerate their workflow.
 
-## Project Components
+## 🧩 Project Components
 
 ![underwriter analysis screenshot](assets/architecture.png)
 
@@ -172,9 +175,9 @@ The project consists of three main components:
 
 - **Infrastructure**: Deployed via AWS CDK, which automates the provisioning and management of all cloud resources.
 
-## Development Setup
+## 💻 Development Setup
 
-For local development, follow these steps:
+The frontend can be run locally for development and testing. Follow these steps:
 
 ### Frontend
 1. Navigate to the frontend directory and install dependencies:
@@ -182,12 +185,14 @@ For local development, follow these steps:
    cd frontend
    npm install
    ```
-2. Start the development server:
+2. Create an `.env.local` file in the frontend directory with the following content:
    ```bash
-   npm start
+   VITE_API_URL=http://{CloudFront URL of deployed application}
    ```
-
-## Contributors
+4. Start the development server:
+   ```bash
+   npm run dev
+## 🙏 Contributors
 Thanks to all the contributors for building, reviewing and testing.
 
 [![Contributors](https://contrib.rocks/image?repo=aws-samples/sample-genai-underwriting-workbench-demo)](https://github.com/aws-samples/sample-genai-underwriting-workbench-demo/graphs/contributors)
