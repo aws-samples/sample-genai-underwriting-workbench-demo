@@ -12,6 +12,7 @@ This solution leverages intelligent document processing to streamline the underw
   - [Document Analysis](#document-analysis)
   - [Underwriter Analysis](#underwriter-analysis)
   - [Chat Interface](#chat-interface)
+- [Sample Documents](#sample-documents)
 - [Deployment](#deployment)
   - [Prerequisites for Deployment](#prerequisites-for-deployment)
   - [Clone the repository and navigate to the project directory](#clone-the-repository-and-navigate-to-the-project-directory)
@@ -62,6 +63,12 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 - Contextual understanding of underwriting terminology for detailed inquiries
 
 ![underwriter analysis screenshot](assets/screen3.png)
+
+## Sample Documents
+
+We have included sample PDF documents in the `sample_documents/` folder. These can be used to test the application's document processing capabilities:
+- `life_submission.pdf`: A sample life insurance application.
+- `p&c_submission.pdf`: A sample property & casualty insurance application.
 
 # Deployment
 
