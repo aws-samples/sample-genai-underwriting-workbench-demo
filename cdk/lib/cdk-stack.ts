@@ -16,6 +16,7 @@ import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -27,6 +28,53 @@ export class CdkStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
     });
+
+    // Create Bedrock Data Automation Project
+    const bedrockBDAProject = new bedrock.CfnDataAutomationProject(this, 'BedrockBDAProject', {
+      projectName: 'genai-underwriting-project',
+      projectDescription: 'BDA Project for GENAI Underwriting Workbench',
+      standardOutputConfiguration: {
+        image: {
+          extraction: {
+            boundingBox: { state: 'ENABLED' },
+            category: { state: 'ENABLED', types: ['TEXT_DETECTION'] }
+          },
+        },
+        video: {
+          extraction: {
+            boundingBox: { state: 'ENABLED' },
+            category: { state: 'ENABLED', types: ['TRANSCRIPT'] }
+          },
+          generativeField: {
+            state: 'ENABLED',
+            types: ['VIDEO_SUMMARY']
+          }
+        },
+        audio: {
+          extraction: {
+            category: { state: 'ENABLED', types: ['TRANSCRIPT'] }
+          }
+        },
+        document: {
+          extraction: { 
+            boundingBox: { state: 'ENABLED' },
+            granularity: {
+              types: ['PAGE', 'ELEMENT', 'WORD', 'LINE'],
+            }
+          },
+          generativeField: {
+            state: 'ENABLED',
+          },
+          outputFormat: {
+            textFormat: {
+              types: ['MARKDOWN', 'PLAIN_TEXT', 'HTML', 'CSV'],
+            },
+            additionalFileFormat: {
+              state: 'DISABLED',
+          }
+        }
+      }
+    },});
 
     // Create S3 bucket for document uploads
     const documentBucket = new s3.Bucket(this, 'DocumentBucket', {
@@ -254,13 +302,49 @@ export class CdkStack extends cdk.Stack {
       payloadResponseOnly: true,
     });
 
+    // Extraction Step using Bedrock Data Automation
+    const invokeDataAutomation = new stepfunctionsTasks.CallAwsService(this, 'ExtractWithBedrockDataAutomation', {
+      service: 'bedrockdataautomationruntime',
+      action: 'invokeDataAutomationAsync',
+      parameters: {
+        "DataAutomationProfileArn": `arn:aws:bedrock:${this.region}:${this.account}:data-automation-profile/us.data-automation-v1`,
+        'InputConfiguration': {
+          'S3Uri.$': "States.Format('s3://{}/{}', $.detail.bucket.name, $.detail.object.key)"
+        },
+        'DataAutomationConfiguration': {
+          'DataAutomationProjectArn': bedrockBDAProject.getAtt('ProjectArn').toString()
+        },
+        'OutputConfiguration': {
+          'S3Uri': `s3://${mockOutputBucket.bucketName}/extracted-data/`,
+        },
+      },
+      resultSelector: {
+        "InvocationArn.$": "$.InvocationArn"
+      },
+      iamResources: ['*'],
+    });
+
+    // Wait for Bedrock Data Automation to complete
+    const wait2Minutes = new stepfunctions.Wait(this, 'Wait2Minutes', {
+      time: stepfunctions.WaitTime.duration(cdk.Duration.minutes(2)),
+    });
+
+    // Initial status check
+    const getDataAutomationStatus = new stepfunctionsTasks.CallAwsService(this, 'GetDataAutomationStatus', {
+      service: 'bedrockdataautomationruntime',
+      action: 'getDataAutomationStatus',
+      parameters: {
+        'InvocationArn.$': '$.InvocationArn'},
+      resultPath: '$.statusResult',
+      iamResources: ['*'],
+    });
+
     // Define extraction steps
     const bedrockExtractStep = new stepfunctionsTasks.LambdaInvoke(this, 'ExtractWithBedrock', {
       lambdaFunction: bedrockExtractLambda,
       resultPath: '$.extraction',
       payloadResponseOnly: true,
     });
-
 
     const analyzeStep = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeData', {
       lambdaFunction: analyzeLambda,
@@ -273,11 +357,17 @@ export class CdkStack extends cdk.Stack {
       payloadResponseOnly: true,
     });
 
-    classifyStep.next(bedrockExtractStep);
-      
-    bedrockExtractStep.next(analyzeStep);
-    
-    analyzeStep.next(actStep);
+    // Create the choice state
+    const choice = new stepfunctions.Choice(this, 'ExtractionJobCompleted')
+      .when(stepfunctions.Condition.stringEquals('$.statusResult.status', 'Success'), bedrockExtractStep.next(analyzeStep).next(actStep))
+      .otherwise(wait2Minutes);
+
+    // Create chain
+    const definition = classifyStep
+      .next(invokeDataAutomation)
+      .next(wait2Minutes)
+      .next(getDataAutomationStatus)
+      .next(choice);
 
     // Create a log group for the state machine
     const logGroup = new logs.LogGroup(this, 'DocumentProcessingLogGroup', {
@@ -287,7 +377,7 @@ export class CdkStack extends cdk.Stack {
     
     const stateMachine = new stepfunctions.StateMachine(this, 'DocumentProcessingWorkflow', {
       stateMachineName: 'ai-underwriting-workflow',
-      definition: classifyStep,
+      definition: definition,
       timeout: cdk.Duration.minutes(30),
       // Add logging configuration
       logs: {
