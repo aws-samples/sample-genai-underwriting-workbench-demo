@@ -115,6 +115,18 @@ export class CdkStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // Add Bedrock Data Automation policy statement
+    const bedrockDataAutomationPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock:InvokeDataAutomationAsync',
+        'bedrock:GetDataAutomationStatus',
+      ],
+      resources: [
+        '*'
+      ],
+    });
+
     // Create Lambda Layers
     const pdfProcessingLayer = new lambda.LayerVersion(this, 'PdfProcessingLayer', {
       code: lambda.Code.fromAsset('lambda-layers/pdf-tools-py312.zip'),
@@ -321,7 +333,10 @@ export class CdkStack extends cdk.Stack {
       resultSelector: {
         "InvocationArn.$": "$.InvocationArn"
       },
-      iamResources: ['*'],
+      iamResources: [
+        `arn:aws:bedrock:${this.region}:${this.account}:data-automation-project/*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:data-automation-profile/*`,
+      ],
     });
 
     // Wait for Bedrock Data Automation to complete
@@ -336,7 +351,10 @@ export class CdkStack extends cdk.Stack {
       parameters: {
         'InvocationArn.$': '$.InvocationArn'},
       resultPath: '$.statusResult',
-      iamResources: ['*'],
+      iamResources: [
+        `arn:aws:bedrock:${this.region}:${this.account}:data-automation-project/*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:data-automation-profile/*`,
+      ],
     });
 
     // Define extraction steps
@@ -359,7 +377,7 @@ export class CdkStack extends cdk.Stack {
 
     // Create the choice state
     const choice = new stepfunctions.Choice(this, 'ExtractionJobCompleted')
-      .when(stepfunctions.Condition.stringEquals('$.statusResult.status', 'Success'), bedrockExtractStep.next(analyzeStep).next(actStep))
+      .when(stepfunctions.Condition.stringEquals('$.statusResult.Status', 'Success'), bedrockExtractStep.next(analyzeStep).next(actStep))
       .otherwise(wait2Minutes);
 
     // Create chain
@@ -388,6 +406,13 @@ export class CdkStack extends cdk.Stack {
       // Enable X-Ray tracing
       tracingEnabled: true,
     });
+
+    // Grant Step Functions the necessary permissions for Bedrock Data Automation
+    stateMachine.addToRolePolicy(bedrockDataAutomationPolicyStatement);
+
+    // Grant permissions to the document bucket for Bedrock Data Automation
+    documentBucket.grantReadWrite(stateMachine);
+    mockOutputBucket.grantReadWrite(stateMachine);
 
     // Update ApiHandlerLambda with the state machine ARN
     apiHandlerLambda.addEnvironment('STATE_MACHINE_ARN', stateMachine.stateMachineArn);
