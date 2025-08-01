@@ -15,7 +15,9 @@ import {
   faHourglassHalf,
   faExclamationCircle,
   faHeartbeat,
-  faHome
+  faHome,
+  faSearch,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons'
 
 function UploadPage() {
@@ -361,6 +363,30 @@ function JobsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput.trim());
+  };
+
+  const handleClear = () => {
+    setSearchInput('');
+    setSearchQuery('');
+  };
+
+  const handleKeyDown = (e: any) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const filteredJobs = searchQuery
+  ? jobs.filter(job =>
+      job.originalFilename.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  : jobs;
+
 
   useEffect(() => {
     fetchJobs();
@@ -459,9 +485,53 @@ function JobsList() {
             </button>
           </div>
         ) : (
+          <>
+            <div
+              className="search-container"
+              style={{ textAlign: 'center', margin: '20px 0' }}
+            >
+              <input
+                type="text"
+                placeholder="Search by filename"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                style={{ padding: '8px', width: '300px' }}
+              />
+              <button
+                onClick={handleSearch}
+                style={{
+                  padding: '8px 12px',
+                  marginLeft: '8px',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FontAwesomeIcon icon={faSearch} style={{ marginRight: '5px' }} />
+                Search
+              </button>
+              <button
+                onClick={handleClear}
+                style={{
+                  padding: '8px 12px',
+                  marginLeft: '8px',
+                  background: 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FontAwesomeIcon icon={faTimes} style={{ marginRight: '5px' }} />
+                Clear
+              </button>
+            </div>
           <div className="jobs-list">
-            {jobs.map((job) => (
-              <div 
+            {filteredJobs.map(job => (
+              <div
                 key={job.jobId}
                 className="job-card"
                 onClick={() => navigate(`/jobs/${job.jobId}`)}
@@ -485,6 +555,7 @@ function JobsList() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
     </div>
