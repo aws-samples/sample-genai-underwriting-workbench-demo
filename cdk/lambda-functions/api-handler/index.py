@@ -108,26 +108,38 @@ def lambda_handler(event, context):
         }
 
 def list_jobs():
-    """List all jobs from DynamoDB"""
+    """List all jobs from DynamoDB, sorted newest first."""
     try:
-        response = dynamodb.scan(
-            TableName=JOBS_TABLE_NAME,
-            ProjectionExpression="jobId, #s, uploadTimestamp, originalFilename, documentType, insuranceType",
-            ExpressionAttributeNames={'#s': 'status'}
-        )
-        
+        # Initial scan parameters
+        scan_kwargs = {
+            'TableName': JOBS_TABLE_NAME,
+            'ProjectionExpression': "jobId, #s, uploadTimestamp, originalFilename, documentType, insuranceType",
+            'ExpressionAttributeNames': {'#s': 'status'}
+        }
+
+        all_items = []
+        while True:
+            response = dynamodb.scan(**scan_kwargs)
+            all_items.extend(response.get('Items', []))
+
+            # If there's more data, keep scanning
+            last_key = response.get('LastEvaluatedKey')
+            if last_key:
+                scan_kwargs['ExclusiveStartKey'] = last_key
+            else:
+                break
+
+        # Transform DynamoDB items into plain dicts
         jobs = []
-        for item in response.get('Items', []):
-            job = {
+        for item in all_items:
+            jobs.append({
                 'jobId': item.get('jobId', {}).get('S', ''),
                 'status': item.get('status', {}).get('S', ''),
                 'uploadTimestamp': item.get('uploadTimestamp', {}).get('S', ''),
                 'originalFilename': item.get('originalFilename', {}).get('S', ''),
                 'documentType': item.get('documentType', {}).get('S', ''),
                 'insuranceType': item.get('insuranceType', {}).get('S', '')
-            }
-            jobs.append(job)
-        
+            })
         # Sort by uploadTimestamp descending (newest first)
         jobs.sort(key=lambda x: x.get('uploadTimestamp', ''), reverse=True)
         
