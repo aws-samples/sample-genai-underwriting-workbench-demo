@@ -59,6 +59,37 @@ export class CdkStack extends cdk.Stack {
       ],
     });
 
+    // Create S3 bucket to store extraction chunks
+    const extractionBucket = new s3.Bucket(this, 'ExtractionBucket', {
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'extraction-chunks']),
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
+      autoDeleteObjects: true,
+      versioned: true,
+      eventBridgeEnabled: true,
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.GET,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedOrigins: ['*'], // This will be replaced by CloudFront domain in production
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000
+        },
+      ],
+      lifecycleRules: [
+        {
+          expiration: cdk.Duration.days(30), // Auto-delete files after 30 days
+        },
+      ],
+    });
+
+
     // Create S3 bucket for mock output files
     const mockOutputBucket = new s3.Bucket(this, 'MockOutputBucket', {
       bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'mock-output']),
@@ -69,6 +100,12 @@ export class CdkStack extends cdk.Stack {
     });
 
     // Create Lambda Layers
+    const pillowLayer = new lambda.LayerVersion(this, 'PillowLayer', {
+      code: lambda.Code.fromAsset('lambda-layers/pillow-py312.zip'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+      description: 'Image processing libaries for downsizing',
+    });
+
     const pdfProcessingLayer = new lambda.LayerVersion(this, 'PdfProcessingLayer', {
       code: lambda.Code.fromAsset('lambda-layers/pdf-tools-py312.zip'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
@@ -121,6 +158,8 @@ export class CdkStack extends cdk.Stack {
       resources: [
         documentBucket.arnForObjects('*'),
         documentBucket.bucketArn,
+        extractionBucket.arnForObjects('*'),
+        extractionBucket.bucketArn,
         mockOutputBucket.arnForObjects('*'),
         mockOutputBucket.bucketArn
       ],
@@ -144,6 +183,7 @@ export class CdkStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         DOCUMENT_BUCKET: documentBucket.bucketName,
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
         JOBS_TABLE_NAME: jobsTable.tableName,
         // STATE_MACHINE_ARN will be added later
       },
@@ -165,7 +205,21 @@ export class CdkStack extends cdk.Stack {
       layers: [pdfProcessingLayer, boto3Layer],
     });
 
-    // 3. Bedrock Extract Lambda
+    // 3. Batch Page Lambda
+    const batchGeneratorLambda = new lambda.Function(this, 'BatchGeneratorLambda', {
+      functionName: 'ai-underwriting-batch-generator',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/batch-generator'),
+      handler: 'index.handler',
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 1024,
+      layers: [pdfProcessingLayer],
+      environment: {
+        BATCH_SIZE: '1',
+      },
+    });
+
+    // 4. Bedrock Extract Lambda
     const bedrockExtractLambda = new lambda.Function(this, 'BedrockExtractLambda', {
       functionName: 'ai-underwriting-bedrock-extract',
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -177,26 +231,29 @@ export class CdkStack extends cdk.Stack {
         BEDROCK_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         MAX_PAGES_FOR_EXTRACTION: '5',
+        EXTRACTION_BUCKET: extractionBucket.bucketName
       },
-      layers: [pdfProcessingLayer, boto3Layer],
+      layers: [pillowLayer, pdfProcessingLayer, boto3Layer],
     });
-    
-    // 4. Analyze Lambda
+
+    // 5. Analyze Lambda
     const analyzeLambda = new lambda.Function(this, 'AnalyzeLambda', {
       functionName: 'ai-underwriting-analyze',
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions/analyze'),
       handler: 'index.lambda_handler',
       timeout: cdk.Duration.minutes(5),
+      ephemeralStorageSize: cdk.Size.gibibytes(2),
       memorySize: 512,
       environment: {
         BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
+        EXTRACTION_BUCKET: extractionBucket.bucketName
       },
       layers: [boto3Layer],
     });
 
-    // 5. Act Lambda
+    // 6. Act Lambda
     const actLambda = new lambda.Function(this, 'ActLambda', {
       functionName: 'ai-underwriting-act',
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -211,7 +268,7 @@ export class CdkStack extends cdk.Stack {
       layers: [strandsSDKLayer, boto3Layer],
     });
 
-    // 6. Chat Lambda
+    // 7. Chat Lambda
     const chatLambda = new lambda.Function(this, 'ChatLambda', {
       functionName: 'ai-underwriting-chat',
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -234,12 +291,17 @@ export class CdkStack extends cdk.Stack {
     classifyLambda.addToRolePolicy(dynamodbPolicyStatement);
     classifyLambda.addToRolePolicy(s3PolicyStatement);
 
+    batchGeneratorLambda.addToRolePolicy(s3PolicyStatement);
+    batchGeneratorLambda.addToRolePolicy(dynamodbPolicyStatement);
+    batchGeneratorLambda.addToRolePolicy(bedrockPolicyStatement);
+
     bedrockExtractLambda.addToRolePolicy(bedrockPolicyStatement);
     bedrockExtractLambda.addToRolePolicy(dynamodbPolicyStatement);
     bedrockExtractLambda.addToRolePolicy(s3PolicyStatement);
 
     analyzeLambda.addToRolePolicy(bedrockPolicyStatement);
     analyzeLambda.addToRolePolicy(dynamodbPolicyStatement);
+    analyzeLambda.addToRolePolicy(s3PolicyStatement);
 
     actLambda.addToRolePolicy(bedrockPolicyStatement);
     actLambda.addToRolePolicy(dynamodbPolicyStatement);
@@ -255,13 +317,42 @@ export class CdkStack extends cdk.Stack {
       payloadResponseOnly: true,
     });
 
-    // Define extraction steps
-    const bedrockExtractStep = new stepfunctionsTasks.LambdaInvoke(this, 'ExtractWithBedrock', {
-      lambdaFunction: bedrockExtractLambda,
-      resultPath: '$.extraction',
+    const generateBatchesStep = new stepfunctionsTasks.LambdaInvoke(this, 'GenerateBatches', {
+      lambdaFunction: batchGeneratorLambda,
+      // pass through the bucket/key and classification info
+      payload: stepfunctions.TaskInput.fromObject({
+        detail: {
+          bucket: stepfunctions.JsonPath.stringAt('$.detail.bucket.name'),
+          object: { key: stepfunctions.JsonPath.stringAt('$.detail.object.key') }
+        },
+        classification: stepfunctions.JsonPath.stringAt('$.classification')
+      }),
+      resultPath: '$.batches',
       payloadResponseOnly: true,
     });
 
+    const parallelExtract = new stepfunctions.Map(this, 'ParallelExtraction', {
+      itemsPath: '$.batches.batchRanges',
+      resultPath: '$.extractionResults',
+      maxConcurrency: 4,
+      parameters: {
+        'detail.$': '$.detail',
+        'classification.$': '$.classification',
+        'pages.$': '$$.Map.Item.Value',
+      }
+    });
+
+    const extractTask = new stepfunctionsTasks.LambdaInvoke(this, 'ExtractWithBedrock', {
+      lambdaFunction: bedrockExtractLambda,
+      payloadResponseOnly: true,
+      resultSelector: {
+        'pages.$':  '$.pages',
+        'chunkS3Key.$': '$.chunkS3Key'
+      },
+      resultPath: '$',
+    });
+
+    parallelExtract.itemProcessor(extractTask);
 
     const analyzeStep = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeData', {
       lambdaFunction: analyzeLambda,
@@ -274,12 +365,12 @@ export class CdkStack extends cdk.Stack {
       payloadResponseOnly: true,
     });
 
-    classifyStep.next(bedrockExtractStep);
+    classifyStep
+      .next(generateBatchesStep)
+      .next(parallelExtract)
+      .next(analyzeStep)
+      .next(actStep);
       
-    bedrockExtractStep.next(analyzeStep);
-    
-    analyzeStep.next(actStep);
-
     // Create a log group for the state machine
     const logGroup = new logs.LogGroup(this, 'DocumentProcessingLogGroup', {
       retention: logs.RetentionDays.ONE_WEEK,
@@ -289,7 +380,7 @@ export class CdkStack extends cdk.Stack {
     const stateMachine = new stepfunctions.StateMachine(this, 'DocumentProcessingWorkflow', {
       stateMachineName: 'ai-underwriting-workflow',
       definition: classifyStep,
-      timeout: cdk.Duration.minutes(30),
+      timeout: cdk.Duration.minutes(60),
       // Add logging configuration
       logs: {
         destination: logGroup,
@@ -540,6 +631,16 @@ export class CdkStack extends cdk.Stack {
       id: 'AwsSolutions-S10',
       reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
     }]);
+    NagSuppressions.addResourceSuppressions(extractionBucket, [{
+      id: 'AwsSolutions-S3-1',
+      reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
+    },{
+      id: 'AwsSolutions-S1',
+      reason: 'S3 bucket server access logging is not enabled for development. Will be enabled in production.',
+    },{
+      id: 'AwsSolutions-S10',
+      reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
+    }]);
     NagSuppressions.addResourceSuppressions(websiteBucket, [{
       id: 'AwsSolutions-S3-1',
       reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
@@ -553,6 +654,10 @@ export class CdkStack extends cdk.Stack {
     
     // Add specific suppression for DocumentBucket Policy Resource
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentBucket/Policy/Resource', [{
+      id: 'AwsSolutions-S10',
+      reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
+    }]);
+    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ExtractionBucket/Policy/Resource', [{
       id: 'AwsSolutions-S10',
       reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
     }]);
@@ -638,6 +743,12 @@ export class CdkStack extends cdk.Stack {
       id: 'AwsSolutions-L1',
       reason: 'Using Python 3.12 which is the latest available runtime for this project.',
     }]);
+    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/Resource', [
+      {
+        id: 'AwsSolutions-L1',
+        reason: 'Using Python 3.12 which is the latest available runtime for this project.',
+      },
+    ]);
 
     // Add suppression for Lambda functions using AWS managed policy
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ClassifyLambda/ServiceRole/Resource', [{
@@ -660,6 +771,13 @@ export class CdkStack extends cdk.Stack {
       id: 'AwsSolutions-IAM4',
       reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
     }]);
+    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/ServiceRole/Resource', [
+      {
+        id: 'AwsSolutions-IAM4',
+        reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
+      },
+    ]);
+
 
     // Add suppression for Lambda function DefaultPolicy wildcard permissions
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ClassifyLambda/ServiceRole/DefaultPolicy/Resource', [{
@@ -682,6 +800,12 @@ export class CdkStack extends cdk.Stack {
       id: 'AwsSolutions-IAM5',
       reason: 'Lambda needs access to Bedrock and DynamoDB table indexes. This is acceptable for this demo.',
     }]);
+    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/ServiceRole/DefaultPolicy/Resource', [
+      {
+        id: 'AwsSolutions-IAM5',
+        reason: 'Lambda needs access to Bedrock, DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
+      },
+    ]);
 
     // Add suppression for Step Function Role DefaultPolicy wildcard permissions
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentProcessingWorkflow/Role/DefaultPolicy/Resource', [{
@@ -795,6 +919,11 @@ export class CdkStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'DocumentBucketName', {
       value: documentBucket.bucketName,
+      description: 'S3 Bucket for document uploads',
+    });
+
+    new cdk.CfnOutput(this, 'ExtractionBucketName', {
+      value: extractionBucket.bucketName,
       description: 'S3 Bucket for document uploads',
     });
 

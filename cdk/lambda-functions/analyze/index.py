@@ -2,12 +2,20 @@ import json
 import boto3
 import os
 import re
+import traceback
 from datetime import datetime, timezone # ADDED
 
 # Initialize AWS clients outside the handler for reuse
 bedrock_runtime = boto3.client(service_name='bedrock-runtime')
 dynamodb_client = boto3.client('dynamodb') # ADDED
-jobs_table_name_env = os.environ.get('JOBS_TABLE_NAME') # ADDED
+# Environment variables
+DB_TABLE = os.environ.get('JOBS_TABLE_NAME')
+EXTRACTION_BUCKET = os.environ.get('EXTRACTION_BUCKET')
+
+# Reuse a single S3 client for fetching chunk files
+def get_s3_client():
+    return boto3.client('s3')
+
 
 # Define the expected output schema for this analysis lambda
 ANALYSIS_OUTPUT_SCHEMA = {
@@ -37,100 +45,81 @@ def validate_analysis_data(data, schema):
     Returns:
         bool: True if validation passes basic checks, False otherwise.
     """
-    is_valid = True
+    print("[validate_analysis_data] Starting validation")
     if not isinstance(data, dict):
-        print("Validation Error: Overall data is not a dictionary.")
+        print("[validate_analysis_data] Error: Overall data is not a dictionary.")
         return False
-
-    for key, schema_value_type in schema.items():
+    is_valid = True
+    for key, schema_val in schema.items():
         if key not in data:
-            print(f"Validation Warning: Missing top-level key '{key}' in extracted data.")
-            # Add missing key with default to allow processing
-            data[key] = [] if isinstance(schema_value_type, list) else {} if isinstance(schema_value_type, dict) else "N/A" 
+            print(f"[validate_analysis_data] Warning: Missing top-level key '{key}' in data.")
+            data[key] = [] if isinstance(schema_val, list) else {} if isinstance(schema_val, dict) else "N/A"
             is_valid = False
-            continue 
-
-        # Basic type checking for lists (like identified_risks)
-        if isinstance(schema_value_type, list) and isinstance(schema_value_type[0], dict):
-            if not isinstance(data[key], list):
-                print(f"Validation Error: Key '{key}' should be a list, but found {type(data[key])}.")
-                is_valid = False
-                continue
-    
+        elif isinstance(schema_val, list) and not isinstance(data[key], list):
+            print(f"[validate_analysis_data] Error: Key '{key}' should be list but is {type(data[key])}.")
+            is_valid = False
+    print(f"[validate_analysis_data] Validation {'passed' if is_valid else 'had issues'}")
     return is_valid
 
+
 def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))
-    
-    # Initialize variables
-    extracted_data = None
-    analysis_output = {"status": "ERROR", "message": "Processing not completed", "analysis_data": {}}
-    job_id = None 
-    
-    try:
-        # --- Step 1: Extract Input Parameters and Load Data ---
+    print("[lambda_handler] Received event:", json.dumps(event))
+
+    # --- 1) Fetch & merge all S3-backed chunks ---
+    print("[lambda_handler] Merging extractionResults via S3 pointers")
+    merged_data = {}
+    raw_results = event.get('extractionResults') or []
+    s3 = get_s3_client()
+    for idx, chunk_meta in enumerate(raw_results):
+        pages = chunk_meta.get('pages')
+        key = chunk_meta.get('chunkS3Key')
+        print(f"[lambda_handler] Chunk {idx}: pages={pages}, chunkS3Key={key}")
+        if not key:
+            print(f"[lambda_handler] Skipping chunk {idx} because no chunkS3Key provided")
+            continue
         try:
-            # The Step Function passes the entire output from the previous step
-            if 'extraction' not in event or not isinstance(event['extraction'], dict):
-                raise ValueError("Missing or invalid 'extraction' field in input event")
+            print(f"[lambda_handler] Fetching S3 object: Bucket={EXTRACTION_BUCKET}, Key={key}")
+            obj = s3.get_object(Bucket=EXTRACTION_BUCKET, Key=key)
+            body = obj['Body'].read()
+            chunk_data = json.loads(body.decode('utf-8'))
+            print(f"[lambda_handler] Retrieved chunk {idx}, keys={list(chunk_data.keys())}")
+        except Exception as e:
+            print(f"[lambda_handler] Error fetching/parsing S3 chunk {idx} (Bucket={EXTRACTION_BUCKET}, Key={key}): {e}")
+            traceback.print_exc()
+            # Optionally fail fast or continue merging
+            continue
+        for subdoc, pages_list in chunk_data.items():
+            merged_data.setdefault(subdoc, []).extend(pages_list or [])
+    print(f"[lambda_handler] Merged extracted data keys: {list(merged_data.keys())}")
+    extracted_data = merged_data
 
-            extraction_result = event['extraction']
-
-            if extraction_result.get('status') != 'SUCCESS':
-                raise ValueError(f"Previous extraction step failed: {extraction_result.get('message', 'Unknown error')}")
-
-            extracted_data = extraction_result.get('data')
-            job_id = event.get('classification').get('jobId')
-            insurance_type = event.get('classification').get('insuranceType')
-            document_type = event.get('classification').get('classification')
-            print(f"Job ID: {job_id}")
-            print(f"Document type: {document_type}")
-            print(f"Insurance type: {insurance_type}")
-
-            if not document_type or not extracted_data:
-                raise ValueError("Missing 'document_type' or 'data' in extraction result")
-            if not job_id: # ADDED: Check for jobId
-                print("Warning: Missing 'jobId' in extraction result. DynamoDB update will be skipped.")
-
-            # --- Update DynamoDB status to ANALYZING ---
-            if job_id and jobs_table_name_env:
-                try:
-                    timestamp_now = datetime.now(timezone.utc).isoformat()
-                    dynamodb_client.update_item(
-                        TableName=jobs_table_name_env,
-                        Key={'jobId': {'S': job_id}},
-                        UpdateExpression="SET #status_attr = :status_val, #analyzeStartTs = :analyzeStartTsVal",
-                        ExpressionAttributeNames={
-                            '#status_attr': 'status',
-                            '#analyzeStartTs': 'analysisStartTimestamp'
-                        },
-                        ExpressionAttributeValues={
-                            ':status_val': {'S': 'ANALYZING'},
-                            ':analyzeStartTsVal': {'S': timestamp_now}
-                        }
-                    )
-                    print(f"Updated job {job_id} status to ANALYZING")
-                except Exception as ddb_e:
-                    print(f"Error updating DynamoDB status for job {job_id}: {str(ddb_e)}")
-
-            print(f"Successfully loaded extracted data for document type: {document_type}. Job ID: {job_id}")
-
-        except (KeyError, ValueError, TypeError) as e:
+    # --- 2) Persist extractedDataJsonStr to DynamoDB ---
+    classification = event.get('classification', {})
+    job_id = classification.get('jobId')
+    document_type = classification.get('classification')
+    if job_id and DB_TABLE:
+        try:
+            ts = datetime.now(timezone.utc).isoformat()
+            dynamodb_client.update_item(
+                TableName=DB_TABLE,
+                Key={'jobId': {'S': job_id}},
+                UpdateExpression="SET #dt = :dt, #ed = :ed, #et = :et",
+                ExpressionAttributeNames={'#dt': 'documentType', '#ed': 'extractedDataJsonStr', '#et': 'extractionTimestamp'},
+                ExpressionAttributeValues={':dt': {'S': document_type}, ':ed': {'S': json.dumps(extracted_data)}, ':et': {'S': ts}}
+            )
+            print(f"[lambda_handler] Persisted extractedDataJsonStr for job {job_id}")
+        except Exception as e:
             print(f"Error processing input event: {e}")
-            analysis_output["message"] = f"Error processing input event: {str(e)}"
-            return analysis_output
+            analysis_json["message"] = f"Error processing input event: {str(e)}"
+            return analysis_json
 
-        # Prepare consolidated data for analysis
-        print("Preparing consolidated data for prompt...")
-        consolidated_text_for_analysis = json.dumps(extracted_data, indent=2)
-        print(f"Consolidated data prepared. Length: {len(consolidated_text_for_analysis)} characters.")
-
-        # --- Step 2: Construct Analysis Prompt ---
-        print("Constructing analysis prompt...")
-        analysis_prompt_text = f"""You are an expert insurance underwriter tasked with analyzing extracted document information.
+    # --- 3) Construct Analysis Prompt ---
+    consolidated = json.dumps(extracted_data, indent=2)
+    print(f"[lambda_handler] Building analysis prompt (length {len(consolidated)} chars)")
+    analysis_prompt_text = f"""You are an expert insurance underwriter tasked with analyzing extracted document information.
         The following data was extracted from an insurance document:
         <extracted_data>
-        {consolidated_text_for_analysis}
+        {consolidated}
         </extracted_data>
 
         Please perform a comprehensive analysis. Your goal is to:
@@ -154,119 +143,60 @@ def lambda_handler(event, context):
         
         Return ONLY the JSON object.
         """
-        print(f"Analysis prompt created. Length: {len(analysis_prompt_text)} characters.")
+    print(f"Analysis prompt created. Length: {len(analysis_prompt_text)} characters.")
 
-        # --- Step 3: Call Bedrock for Analysis ---
-        print("Calling Bedrock Converse API...")
-        model_id = os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0') 
-        
-        converse_messages = [
-            {
-                "role": "user",
-                "content": [{"text": analysis_prompt_text}]
-            }
-        ]
-        
-        try:
-            response = bedrock_runtime.converse(
-                modelId=model_id,
-                messages=converse_messages,
-                inferenceConfig={
-                    "maxTokens": 4096, 
-                    "temperature": 0.05  
-                }
-            )
-            print("Received response from Bedrock.")
-        except Exception as e:
-            print(f"Error calling Bedrock Converse API: {e}")
-            analysis_output["message"] = f"Error calling Bedrock: {str(e)}"
-            return analysis_output
-
-        # --- Step 4: Process and Validate Response ---
-        print("Parsing and validating Bedrock response...")
-        output_message = response.get('output', {}).get('message', {})
-        if not output_message:
-            raise ValueError("Bedrock Converse API response missing 'output' or 'message' field.")
-
-        assistant_response_content_list = output_message.get('content', [])
-        if not assistant_response_content_list or \
-        not isinstance(assistant_response_content_list[0], dict) or \
-        'text' not in assistant_response_content_list[0]:
-            raise ValueError("Bedrock Converse API response content is not in the expected format or is empty.")
-            
-        assistant_response_text = assistant_response_content_list[0]['text']
-        print(f"Extracted assistant response text. Length: {len(assistant_response_text)}")
-
-        # Attempt to parse JSON robustly
-        parsed_analysis_data = None
-        try:
-            parsed_analysis_data = json.loads(assistant_response_text) 
-        except json.JSONDecodeError:
-            print("Direct JSON parsing failed. Attempting to find JSON block using regex...")
-            match = re.search(r'\{(?:[^{}]|\{[^{}]*\})*\}', assistant_response_text) 
-            if match:
-                json_block = match.group(0)
-                print(f"Found potential JSON block: {json_block[:200]}...")
-                try:
-                    parsed_analysis_data = json.loads(json_block)
-                except json.JSONDecodeError as e_inner:
-                    print(f"Error parsing extracted JSON block: {e_inner}")
-                    analysis_output["message"] = f"Could not parse JSON from Bedrock response: {str(e_inner)}"
-                    return analysis_output 
-            else:
-                print(f"No JSON block found in response: {assistant_response_text}")
-                analysis_output["message"] = "No valid JSON block found in Bedrock response."
-                return analysis_output 
-        
-        if parsed_analysis_data is None:
-            print(f"Error: Failed to parse JSON data from response text: {assistant_response_text}")
-            analysis_output["message"] = "Failed to parse JSON data from Bedrock response."
-            return analysis_output
-
-        # Validate the structure of the parsed data
-        print(f"Validating parsed data against schema...")
-        if not validate_analysis_data(parsed_analysis_data, ANALYSIS_OUTPUT_SCHEMA):
-            print("Warning: Parsed data structure validation failed or had warnings.")
-            analysis_output["message"] = "Analysis completed, but output schema validation had warnings."
-        else: 
-            print("Parsed data structure validation successful.")
-            analysis_output["message"] = "Analysis completed successfully."
-
-        analysis_output["analysis_data"] = parsed_analysis_data
-        analysis_output["status"] = "SUCCESS"
-        analysis_output["insurance_type"] = insurance_type
-        print("Successfully processed and validated analysis data.")
-
-        # --- Step 5: Update DynamoDB --- ADDED BLOCK
-        if job_id and jobs_table_name_env and parsed_analysis_data:
-            try:
-                timestamp_now = datetime.now(timezone.utc).isoformat()
-                dynamodb_client.update_item(
-                    TableName=jobs_table_name_env,
-                    Key={'jobId': {'S': job_id}},
-                    UpdateExpression="SET #analysisOutput = :analysisOutputVal, #analysisTs = :analysisTsVal",
-                    ExpressionAttributeNames={
-                        '#analysisOutput': 'analysisOutputJsonStr', # New DDB attribute
-                        '#analysisTs': 'analysisTimestamp' # New DDB attribute
-                    },
-                    ExpressionAttributeValues={
-                        ':analysisOutputVal': {'S': json.dumps(parsed_analysis_data)},
-                        ':analysisTsVal': {'S': timestamp_now}
-                    }
-                )
-                print(f"Successfully updated job {job_id} in DynamoDB with analysis results.")
-            except Exception as ddb_e:
-                print(f"Error updating DynamoDB for job {job_id} with analysis results: {str(ddb_e)}. Analysis data not saved to DDB.")
-        elif not job_id:
-            print("Skipping DynamoDB update for analysis results: job_id is missing.")
-        # --- END OF DDB UPDATE BLOCK ---
-
+    # --- 4) Call Bedrock Converse API ---
+    try:
+        response = bedrock_runtime.converse(
+            modelId=os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'),
+            messages=[{"role": "user", "content": [{"text": analysis_prompt_text}]}],
+            inferenceConfig={"maxTokens": 4096, "temperature": 0.05}
+        )
+        print("[lambda_handler] Bedrock response received")
     except Exception as e:
-        print(f"Unhandled error in analyze-lambda: {e}")
-        analysis_output["message"] = f"Unhandled error: {str(e)}"
-            
-    finally:
-        pass
+        print(f"[lambda_handler] Bedrock error: {e}")
+        analysis_json["message"] = f"Error calling Bedrock: {str(e)}"
+        return analysis_json
 
-    print("Returning final analysis result:", json.dumps(analysis_output))
-    return analysis_output
+    # --- 5) Parse assistant output ---
+    out = response.get('output', {}).get('message', {}).get('content', [])
+    text_block = out[0] if out and isinstance(out[0], dict) else {}
+    text = text_block.get('text', '')
+    print(f"[lambda_handler] Assistant text length: {len(text)}")
+    try:
+        analysis_json = json.loads(text)
+    except Exception:
+        match = re.search(r'\{[\s\S]*\}', text)
+        if match:
+            analysis_json = json.loads(match.group(0))
+        else:
+            print("[lambda_handler] Invalid assistant JSON, no match found")
+            return {"status": "ERROR", "message": "Invalid assistant JSON", "analysis_data": {}}
+
+    # --- 6) Validate schema ---
+    valid = validate_analysis_data(analysis_json, ANALYSIS_OUTPUT_SCHEMA)
+    status_msg = "SUCCESS" if valid else "WARNING"
+
+    # --- 7) Persist analysisOutputJsonStr to DynamoDB ---
+    if job_id and DB_TABLE:
+        try:
+            ts2 = datetime.now(timezone.utc).isoformat()
+            dynamodb_client.update_item(
+                TableName=DB_TABLE,
+                Key={'jobId': {'S': job_id}},
+                UpdateExpression="SET #ao = :ao, #at = :at",
+                ExpressionAttributeNames={'#ao': 'analysisOutputJsonStr', '#at': 'analysisTimestamp'},
+                ExpressionAttributeValues={':ao': {'S': json.dumps(analysis_json)}, ':at': {'S': ts2}}
+            )
+            print(f"[lambda_handler] Persisted analysisOutputJsonStr for job {job_id}")
+        except Exception as e:
+            print(f"[lambda_handler] DynamoDB analysis persist error: {e}")
+            traceback.print_exc()
+
+    print("Returning final analysis result:", json.dumps(analysis_json))
+    # --- 8) Return final result ---
+    return {
+        "status": status_msg,
+        "message": "Analysis completed" if valid else "Analysis completed with warnings",
+        "analysis_data": analysis_json
+    }
