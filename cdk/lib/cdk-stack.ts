@@ -16,6 +16,7 @@ import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -421,6 +422,48 @@ export class CdkStack extends cdk.Stack {
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI');
     websiteBucket.grantRead(originAccessIdentity);
 
+    // Create IP set for CloudFront distribution
+    const whitelistIpSet = new wafv2.CfnIPSet(this, 'WhitelistIPSet', {
+      name: 'WhitelistIPSet',
+      scope: 'CLOUDFRONT',
+      ipAddressVersion: 'IPV4',
+      addresses: []
+    });
+
+   // Create WAFv2 Web ACL for CloudFront distribution
+    const webAcl = new wafv2.CfnWebACL(this, 'WhitelistIPSetWebAcl', {
+      name: 'WhitelistIPSetWebAcl',
+      scope: 'CLOUDFRONT',
+      defaultAction: {
+        allow: {}
+      },
+      rules: [
+        {
+          name: 'AllowWhitelistIPSetRule',
+          priority: 1,
+          statement: {
+            ipSetReferenceStatement: {
+              arn: whitelistIpSet.attrArn,
+            }
+          },
+          action: {
+            allow: {}
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: 'AllowWhitelistIPSetRule',
+          }
+        }
+      ],
+      visibilityConfig: {
+        sampledRequestsEnabled: true,
+        cloudWatchMetricsEnabled: true,
+        metricName: 'CloudFrontWebAcl',
+      },
+    });
+
+
     // Create CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
@@ -429,6 +472,7 @@ export class CdkStack extends cdk.Stack {
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
+      webAclId: webAcl.attrArn,
       additionalBehaviors: {
         '/api/*': {
           origin: new origins.RestApiOrigin(api),
