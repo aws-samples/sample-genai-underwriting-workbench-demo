@@ -902,15 +902,24 @@ export function JobPage({ jobId }: JobPageProps) {
     <PageContext.Provider value={[currentPage, setCurrentPageState]}>
       <NumPagesContext.Provider value={[numPages, setNumPagesState]}>
         <div className="container job-page-override">
-          <div className="page-navigation">
-            <button onClick={() => navigate('/')} className="nav-button">
-              <FontAwesomeIcon icon={faUpload} /> Upload New
-            </button>
-            <button className="how-it-works-button" onClick={() => setIsHowItWorksOpen(true)}>
-              <FontAwesomeIcon icon={faInfoCircle} /> How It Works
-            </button>
+          <div className="header">
+            <div className="header-controls">
+              <button onClick={() => navigate('/')} className="nav-button">
+                <FontAwesomeIcon icon={faUpload} /> Upload New
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/jobs')}
+                className="nav-button"
+              >
+                <FontAwesomeIcon icon={faList} style={{ marginRight: '8px' }} />
+                View All Jobs
+              </button>
+              <button className="how-it-works-button" onClick={() => setIsHowItWorksOpen(true)}>
+                <FontAwesomeIcon icon={faInfoCircle} /> How It Works
+              </button>
+            </div>
           </div>
-          
           <div className="job-header">
             <div className="job-title-section">
               <h1>{analysisData?.filename || `Processing Job ${jobId.slice(0, 8)}...`}</h1>

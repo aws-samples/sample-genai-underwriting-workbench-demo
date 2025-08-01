@@ -152,6 +152,14 @@ function UploadPage() {
               <span>P&C</span>
             </label>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/jobs')}
+            className="nav-button"
+          >
+            <FontAwesomeIcon icon={faList} style={{ marginRight: '8px' }} />
+            View All Jobs
+          </button>
         </div>
       </div>
 
@@ -341,9 +349,9 @@ function JobPageWrapper() {
 
 // Add this new type definition
 interface Job {
-  job_id: string;
-  filename: string;
-  timestamp: number;
+  jobId: string;
+  originalFilename: string;
+  uploadTimestamp: string;
   status: 'Complete' | 'In Progress' | 'Failed';
 }
 
@@ -373,7 +381,7 @@ function JobsList() {
       }
 
       const data = await response.json();
-      setJobs(data);
+      setJobs(data.jobs);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -381,8 +389,9 @@ function JobsList() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Invalid date';
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -453,19 +462,19 @@ function JobsList() {
           <div className="jobs-list">
             {jobs.map((job) => (
               <div 
-                key={job.job_id} 
+                key={job.jobId}
                 className="job-card"
-                onClick={() => navigate(`/jobs/${job.job_id}`)}
+                onClick={() => navigate(`/jobs/${job.jobId}`)}
               >
                 <div className="job-icon">
                   <FontAwesomeIcon icon={faFileAlt} />
                 </div>
                 <div className="job-details">
-                  <h3 className="job-filename">{job.filename}</h3>
+                  <h3 className="job-filename">{job.originalFilename}</h3>
                   <div className="job-meta">
                     <div className="job-date">
                       <FontAwesomeIcon icon={faCalendarAlt} />
-                      {formatDate(job.timestamp)}
+                      {formatDate(job.uploadTimestamp)}
                     </div>
                     <div className={`job-status ${job.status.toLowerCase().replace(' ', '-')}`}>
                       {getStatusIcon(job.status)}
