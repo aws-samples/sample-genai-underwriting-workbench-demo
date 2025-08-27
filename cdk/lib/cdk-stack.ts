@@ -334,8 +334,8 @@ export class CdkStack extends cdk.Stack {
     const parallelExtract = new stepfunctions.Map(this, 'ParallelExtraction', {
       itemsPath: '$.batches.batchRanges',
       resultPath: '$.extractionResults',
-      maxConcurrency: 4,
-      parameters: {
+      maxConcurrency: 1,  // Reduced from 4 to 1
+      itemSelector: {
         'detail.$': '$.detail',
         'classification.$': '$.classification',
         'pages.$': '$$.Map.Item.Value',

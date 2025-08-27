@@ -2,8 +2,11 @@ import json
 import boto3
 import os
 import re
+import time
+import random
 import traceback
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from datetime import datetime, timezone # ADDED
 
 # Configure retry settings for AWS clients
@@ -11,7 +14,8 @@ retry_config = Config(
     retries={
         'max_attempts': 10,
         'mode': 'adaptive'
-    }
+    },
+    max_pool_connections=50
 )
 
 # Initialize AWS clients outside the handler for reuse

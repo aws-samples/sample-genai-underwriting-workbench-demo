@@ -178,7 +178,8 @@ try:
         retries={
             'max_attempts': 10,
             'mode': 'adaptive'
-        }
+        },
+        max_pool_connections=50
     )
     bedrock_client = boto3.client('bedrock-runtime', config=bedrock_config)
     model = BedrockModel(

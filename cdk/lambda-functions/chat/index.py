@@ -10,7 +10,8 @@ retry_config = Config(
     retries={
         'max_attempts': 10,
         'mode': 'adaptive'
-    }
+    },
+    max_pool_connections=50
 )
 
 # Initialize AWS clients

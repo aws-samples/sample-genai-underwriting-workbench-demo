@@ -5,7 +5,10 @@ import io
 import urllib.parse
 import re
 import gc
+import time
+import random
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from datetime import datetime, timezone
 from pdf2image import pdfinfo_from_path, convert_from_path
 from PIL import Image, ImageOps
@@ -14,8 +17,10 @@ from PIL import Image, ImageOps
 retry_config = Config(
     retries={
         'max_attempts': 10,
-        'mode': 'adaptive'
-    }
+        'mode': 'standard',  # Use standard mode for more predictable retries
+        'total_max_attempts': 10
+    },
+    max_pool_connections=50
 )
 
 # Initialize AWS clients outside the handler for reuse
