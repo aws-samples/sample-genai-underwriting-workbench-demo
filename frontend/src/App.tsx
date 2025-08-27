@@ -21,32 +21,55 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 function UploadPage() {
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [insuranceType, setInsuranceType] = useState<'life' | 'property_casualty'>('property_casualty')
+  const [uploadProgress, setUploadProgress] = useState<Record<string, string>>({})
   const navigate = useNavigate()
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0]
+    const selectedFiles = Array.from(event.target.files || [])
     setError(null)
     
-    if (!selectedFile) {
+    if (selectedFiles.length === 0) {
       return
     }
 
-    if (!selectedFile.type.includes('pdf')) {
-      setError('Please select a PDF file')
+    // Validate all files are PDFs
+    const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf'))
+    if (invalidFiles.length > 0) {
+      setError(`Please select only PDF files. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`)
       return
     }
 
-    setFile(selectedFile)
+    setFiles(selectedFiles)
+    setUploadProgress({})
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const droppedFiles = Array.from(event.dataTransfer.files)
+    
+    // Validate all files are PDFs
+    const invalidFiles = droppedFiles.filter(file => !file.type.includes('pdf'))
+    if (invalidFiles.length > 0) {
+      setError(`Please select only PDF files. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`)
+      return
+    }
+
+    setFiles(droppedFiles)
+    setUploadProgress({})
+    setError(null)
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
   }
 
   const handleUpload = async () => {
-    if (!file) {
-      setError('Please select a file first')
+    if (files.length === 0) {
+      setError('Please select at least one file')
       return
     }
 
@@ -54,70 +77,126 @@ function UploadPage() {
     setError(null)
 
     try {
-      // Step 1: Get presigned URL from your backend
-      const presignedUrlResponse = await fetch(`${import.meta.env.VITE_API_URL}/documents/upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type, // Send file's content type
-          insuranceType: insuranceType // Send insurance type to backend
-        }),
-      })
+      if (files.length === 1) {
+        // Single file upload - use existing endpoint
+        await uploadSingleFile(files[0])
+      } else {
+        // Multi-file upload - use batch endpoint
+        await uploadMultipleFiles(files)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+      setUploading(false)
+    }
+  }
 
-      if (!presignedUrlResponse.ok) {
-        if (presignedUrlResponse.status === 401) {
-          setError("Unauthorized: API access denied for generating upload URL.");
-        } else {
-          const errorData = await presignedUrlResponse.json().catch(() => ({ error: 'Failed to get upload URL.' }));
-          throw new Error(errorData.error || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
-        }
-        setUploading(false);
-        return;
+  const uploadSingleFile = async (file: File) => {
+    setUploadProgress({ [file.name]: 'Getting upload URL...' })
+
+    const presignedUrlResponse = await fetch(`${import.meta.env.VITE_API_URL}/documents/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type,
+        insuranceType: insuranceType
+      }),
+    })
+
+    if (!presignedUrlResponse.ok) {
+      if (presignedUrlResponse.status === 401) {
+        throw new Error("Unauthorized: API access denied for generating upload URL.");
+      } else {
+        const errorData = await presignedUrlResponse.json().catch(() => ({ error: 'Failed to get upload URL.' }));
+        throw new Error(errorData.error || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
+      }
+    }
+
+    const { uploadUrl, jobId } = await presignedUrlResponse.json()
+    if (!uploadUrl || !jobId) {
+      throw new Error('Invalid response from upload URL generation endpoint.');
+    }
+
+    setUploadProgress({ [file.name]: 'Uploading to S3...' })
+
+    const s3UploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    })
+
+    if (!s3UploadResponse.ok) {
+      throw new Error(`S3 Upload Failed for ${file.name}: ${s3UploadResponse.statusText}`)
+    }
+
+    setUploadProgress({ [file.name]: 'Uploaded successfully' })
+    setUploading(false)
+    setFiles([])
+    navigate(`/jobs/${jobId}`)
+  }
+
+  const uploadMultipleFiles = async (files: File[]) => {
+    // Step 1: Get batch upload URLs
+    setUploadProgress(Object.fromEntries(files.map(f => [f.name, 'Getting upload URLs...'])))
+
+    const batchResponse = await fetch(`${import.meta.env.VITE_API_URL}/documents/batch-upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        files: files.map(f => ({ filename: f.name })),
+        insuranceType: insuranceType
+      }),
+    })
+
+    if (!batchResponse.ok) {
+      if (batchResponse.status === 401) {
+        throw new Error("Unauthorized: API access denied for batch upload.");
+      } else {
+        const errorData = await batchResponse.json().catch(() => ({ error: 'Failed to get batch upload URLs.' }));
+        throw new Error(errorData.error || `Failed to get batch upload URLs: ${batchResponse.statusText}`);
+      }
+    }
+
+    const { uploadUrls } = await batchResponse.json()
+    if (!uploadUrls || !Array.isArray(uploadUrls)) {
+      throw new Error('Invalid response from batch upload endpoint.');
+    }
+
+    // Step 2: Upload all files to S3
+    const uploadPromises = files.map(async (file, index) => {
+      const uploadInfo = uploadUrls.find(u => u.filename === file.name)
+      if (!uploadInfo) {
+        throw new Error(`No upload URL found for ${file.name}`)
       }
 
-      const { uploadUrl, jobId, s3Key: returnedS3Key } = await presignedUrlResponse.json() // Expect jobId and s3Key
-      if (!uploadUrl || !jobId || !returnedS3Key) { // Check for jobId and returnedS3Key
-        throw new Error('Invalid response from upload URL generation endpoint. Missing uploadUrl, jobId, or s3Key.');
-      }
+      setUploadProgress(prev => ({ ...prev, [file.name]: 'Uploading to S3...' }))
 
-      // Step 2: Upload the file directly to S3 using the presigned URL
-      const s3UploadResponse = await fetch(uploadUrl, {
+      const s3UploadResponse = await fetch(uploadInfo.uploadUrl, {
         method: 'PUT',
         headers: {
-          'Content-Type': file.type, // Use the actual file type
+          'Content-Type': file.type,
         },
         body: file,
       })
 
       if (!s3UploadResponse.ok) {
-        throw new Error(`S3 Upload Failed: ${s3UploadResponse.statusText}`)
+        throw new Error(`S3 Upload Failed for ${file.name}: ${s3UploadResponse.statusText}`)
       }
 
-      // S3 upload successful, processing will be triggered by S3 event
-      setUploading(false);
-      setFile(null);
-      // if (fileInputRef.current) { // Temporarily comment out if fileInputRef is causing issues
-      //   fileInputRef.current.value = ""; // Reset file input
-      // }
-      // alert("File uploaded successfully. Processing will start automatically via S3 event.");
+      setUploadProgress(prev => ({ ...prev, [file.name]: 'Uploaded successfully' }))
+    })
 
-      // Navigate to the job-specific page
-      if (jobId) {
-        navigate(`/jobs/${jobId}`);
-      } else {
-        // This case should ideally not be hit if the API guarantees a jobId on success
-        setError("File uploaded, but job tracking ID was not returned. Please check the jobs list.");
-        // Optionally, navigate to a general jobs page or show a less disruptive message
-        // navigate("/jobs"); 
-      }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload and processing failed')
-      setUploading(false)
-    }
+    await Promise.all(uploadPromises)
+    
+    setUploading(false)
+    setFiles([])
+    navigate('/jobs')
   }
 
   return (
@@ -279,7 +358,7 @@ function UploadPage() {
       <div className="upload-section">
         <h2>
           <FontAwesomeIcon icon={faFileMedical} style={{ marginRight: '10px', color: '#3b82f6' }} />
-          Upload Document
+          Upload Documents
         </h2>
         
         <div className="insurance-type-selector">
@@ -310,25 +389,50 @@ function UploadPage() {
           </div>
         </div>
         
-        <div className="file-input-container">
+        <div 
+          className={`file-drop-zone ${files.length > 0 ? 'has-files' : ''}`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           <input
             type="file"
             accept=".pdf"
+            multiple
             onChange={handleFileChange}
             disabled={uploading}
             className="file-input"
+            id="file-input"
           />
+          <label htmlFor="file-input" className="file-input-label">
+            <FontAwesomeIcon icon={faFileMedical} size="2x" />
+            <p>
+              <strong>Click to select files</strong> or drag and drop PDF files here
+            </p>
+            <p className="file-hint">
+              You can select multiple PDF files at once
+            </p>
+          </label>
         </div>
         
-        {file && (
-          <div className="file-info">
-            <p>Selected file: {file.name}</p>
+        {files.length > 0 && (
+          <div className="selected-files">
+            <h4>Selected Files ({files.length})</h4>
+            <ul className="file-list">
+              {files.map((file, index) => (
+                <li key={index}>
+                  {file.name}
+                  {uploadProgress[file.name] && (
+                    <span className="upload-status"> - {uploadProgress[file.name]}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
             <button 
               onClick={handleUpload}
               disabled={uploading}
               className="upload-button"
             >
-              {uploading ? 'Uploading...' : 'Analyze Document'}
+              {uploading ? 'Uploading...' : `Analyze ${files.length} Document${files.length > 1 ? 's' : ''}`}
             </button>
           </div>
         )}
