@@ -23,6 +23,7 @@ html, body {
 
 .container {
   max-width: 1400px;
+  min-width: 320px;
   margin: 0 auto;
   padding: 0 0 2rem 0;
   width: 100%;
@@ -601,11 +602,92 @@ html, body {
   border-radius: 2px;
 }
 
+/* Batch grouping styles */
+.batch-container {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 1.5rem;
+  min-width: 0;
+}
+
+.batch-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.batch-header:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.batch-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.batch-toggle {
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.batch-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.batch-header p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.job-card.indented {
+  margin-left: 2rem;
+  margin-bottom: 1rem;
+  width: calc(100% - 2rem);
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .job-card.indented {
+    margin-left: 1rem;
+    width: calc(100% - 1rem);
+  }
+}
+
 .jobs-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   margin-top: 2rem;
+  width: 100%;
+  min-width: 320px;
+}
+
+@media (min-width: 768px) {
+  .jobs-list {
+    min-width: 600px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .jobs-list {
+    min-width: 800px;
+  }
 }
 
 .job-card {
@@ -628,7 +710,6 @@ html, body {
 
 .job-icon {
   width: 60px;
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -636,6 +717,7 @@ html, body {
   color: white;
   font-size: 1.5rem;
   transition: all 0.3s ease;
+  align-self: stretch;
 }
 
 .job-card:hover .job-icon {

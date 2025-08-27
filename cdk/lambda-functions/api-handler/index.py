@@ -122,7 +122,7 @@ def list_jobs():
         # Initial scan parameters
         scan_kwargs = {
             'TableName': JOBS_TABLE_NAME,
-            'ProjectionExpression': "jobId, #s, uploadTimestamp, originalFilename, documentType, insuranceType",
+            'ProjectionExpression': "jobId, #s, uploadTimestamp, originalFilename, documentType, insuranceType, batchId",
             'ExpressionAttributeNames': {'#s': 'status'}
         }
 
@@ -147,7 +147,8 @@ def list_jobs():
                 'uploadTimestamp': item.get('uploadTimestamp', {}).get('S', ''),
                 'originalFilename': item.get('originalFilename', {}).get('S', ''),
                 'documentType': item.get('documentType', {}).get('S', ''),
-                'insuranceType': item.get('insuranceType', {}).get('S', '')
+                'insuranceType': item.get('insuranceType', {}).get('S', ''),
+                'batchId': item.get('batchId', {}).get('S', '')
             })
         # Sort by uploadTimestamp descending (newest first)
         jobs.sort(key=lambda x: x.get('uploadTimestamp', ''), reverse=True)

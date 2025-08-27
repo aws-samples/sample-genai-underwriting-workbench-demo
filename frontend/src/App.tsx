@@ -466,6 +466,7 @@ function JobsList() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [collapsedBatches, setCollapsedBatches] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -504,10 +505,42 @@ function JobsList() {
     return () => clearInterval(pollInterval);
   }, []);
 
+  const toggleBatch = (batchId: string) => {
+    const newCollapsed = new Set(collapsedBatches);
+    if (newCollapsed.has(batchId)) {
+      newCollapsed.delete(batchId);
+    } else {
+      newCollapsed.add(batchId);
+    }
+    setCollapsedBatches(newCollapsed);
+  };
+
+  const groupJobsByBatch = (jobs: Job[]) => {
+    const grouped = jobs.reduce((acc, job) => {
+      const batchId = job.batchId || 'no-batch';
+      if (!acc[batchId]) {
+        acc[batchId] = [];
+      }
+      acc[batchId].push(job);
+      return acc;
+    }, {} as Record<string, Job[]>);
+    return grouped;
+  };
+
+  const getShortBatchId = (batchId: string) => {
+    if (batchId === 'no-batch') return 'Individual';
+    return batchId.slice(-8);
+  };
+
+  const getBatchTimestamp = (jobs: Job[]) => {
+    const timestamps = jobs.map(job => new Date(job.uploadTimestamp));
+    const earliest = new Date(Math.min(...timestamps.map(d => d.getTime())));
+    return earliest.toLocaleString();
+  };
+
   const fetchJobs = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs`, {
-      });
+      const response = await fetch(`https://5oleve3nxg.execute-api.us-east-1.amazonaws.com/prod/api/jobs`);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -519,7 +552,7 @@ function JobsList() {
       }
 
       const data = await response.json();
-      setJobs(data.jobs);
+      setJobs(data.jobs || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -642,30 +675,44 @@ function JobsList() {
               </button>
             </div>
           <div className="jobs-list">
-            {filteredJobs.map(job => (
-              <div
-                key={job.jobId}
-                className="job-card"
-                onClick={() => navigate(`/jobs/${job.jobId}`)}
-              >
-                <div className="job-icon">
-                  <FontAwesomeIcon icon={faFileAlt} />
-                </div>
-                <div className="job-details">
-                  <h3 className="job-filename">{job.originalFilename}</h3>
-                  <div className="job-meta">
-                    <div className="job-date">
-                      <FontAwesomeIcon icon={faCalendarAlt} />
-                      {formatDate(job.uploadTimestamp)}
-                    </div>
-                    <div className={`job-status ${job.status.toLowerCase().replace(' ', '-')}`}>
-                      {getStatusIcon(job.status)}
-                      {job.status}
-                    </div>
+            {(() => {
+              const grouped = groupJobsByBatch(filteredJobs);
+              return Object.entries(grouped).map(([batchId, batchJobs]) => (
+                <div key={batchId} className="batch-container">
+                  <div className="batch-header" onClick={() => toggleBatch(batchId)}>
+                    <h3>
+                      <span className={`batch-toggle ${collapsedBatches.has(batchId) ? 'collapsed' : ''}`}>▼</span>
+                      Batch ID: {getShortBatchId(batchId)}
+                    </h3>
+                    <p>Uploaded: {getBatchTimestamp(batchJobs)} • {batchJobs.length} document{batchJobs.length !== 1 ? 's' : ''}</p>
                   </div>
+                  {!collapsedBatches.has(batchId) && batchJobs.map(job => (
+                    <div
+                      key={job.jobId}
+                      className="job-card indented"
+                      onClick={() => navigate(`/jobs/${job.jobId}`)}
+                    >
+                      <div className="job-icon">
+                        <FontAwesomeIcon icon={faFileAlt} />
+                      </div>
+                      <div className="job-details">
+                        <h3 className="job-filename">{job.originalFilename}</h3>
+                        <div className="job-meta">
+                          <div className="job-date">
+                            <FontAwesomeIcon icon={faCalendarAlt} />
+                            {formatDate(job.uploadTimestamp)}
+                          </div>
+                          <div className={`job-status ${job.status.toLowerCase().replace(' ', '-')}`}>
+                            {getStatusIcon(job.status)}
+                            {job.status}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
           </>
         )}
