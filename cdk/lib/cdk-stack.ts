@@ -379,7 +379,7 @@ export class CdkStack extends cdk.Stack {
     
     const stateMachine = new stepfunctions.StateMachine(this, 'DocumentProcessingWorkflow', {
       stateMachineName: 'ai-underwriting-workflow',
-      definition: classifyStep,
+      definitionBody: stepfunctions.DefinitionBody.fromChainable(classifyStep),
       timeout: cdk.Duration.minutes(60),
       // Add logging configuration
       logs: {
@@ -560,7 +560,7 @@ export class CdkStack extends cdk.Stack {
     // Create CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(websiteBucket, {
+        origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
           originAccessIdentity,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
