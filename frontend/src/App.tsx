@@ -494,6 +494,14 @@ function JobsList() {
 
   useEffect(() => {
     fetchJobs();
+    
+    // Set up polling to refresh job statuses every 5 seconds
+    const pollInterval = setInterval(() => {
+      fetchJobs();
+    }, 5000);
+    
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
   }, []);
 
   const fetchJobs = async () => {
