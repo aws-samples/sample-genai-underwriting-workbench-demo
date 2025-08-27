@@ -92,6 +92,15 @@ def lambda_handler(event, context):
                 'body': json.dumps(response)
             }
             
+        elif http_method == 'POST' and resource == '/api/documents/batch-upload':
+            # Generate presigned URLs for multiple document uploads
+            response = generate_batch_upload_urls(event)
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps(response)
+            }
+            
         else:
             return {
                 'statusCode': 404,
@@ -298,4 +307,79 @@ def generate_upload_url(event):
     
     except Exception as e:
         print(f"Error generating upload URL: {str(e)}")
+        raise
+
+def generate_batch_upload_urls(event):
+    """Generate presigned URLs for multiple document uploads"""
+    try:
+        # Parse request body for files and insurance type
+        body = json.loads(event.get('body', '{}'))
+        files = body.get('files', [])
+        insurance_type = body.get('insuranceType', 'property_casualty')  # Default to P&C if not specified
+        
+        # Validate insurance type
+        if insurance_type not in ['life', 'property_casualty']:
+            insurance_type = 'property_casualty'  # Default to P&C if invalid
+            
+        if not files or not isinstance(files, list):
+            return {'error': 'Missing or invalid files array in request'}
+            
+        # Generate a batch ID for grouping related uploads
+        batch_id = str(uuid.uuid4())
+        timestamp_now = datetime.now(timezone.utc).isoformat()
+        
+        upload_urls = []
+        
+        for file_info in files:
+            filename = file_info.get('filename')
+            if not filename:
+                continue
+                
+            # Generate a unique job ID for each file
+            job_id = str(uuid.uuid4())
+            
+            # Create S3 key with path structure
+            s3_key = f"uploads/{job_id}/{filename}"
+            
+            # Generate a presigned URL for uploading the document
+            presigned_url = s3.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': DOCUMENT_BUCKET,
+                    'Key': s3_key,
+                    'ContentType': 'application/pdf'
+                },
+                ExpiresIn=300  # URL valid for 5 minutes
+            )
+            
+            # Create initial job record in DynamoDB with batch ID
+            dynamodb.put_item(
+                TableName=JOBS_TABLE_NAME,
+                Item={
+                    'jobId': {'S': job_id},
+                    'batchId': {'S': batch_id},
+                    'status': {'S': 'CREATED'},
+                    'uploadTimestamp': {'S': timestamp_now},
+                    'originalFilename': {'S': filename},
+                    's3Key': {'S': s3_key},
+                    'insuranceType': {'S': insurance_type}
+                }
+            )
+            
+            upload_urls.append({
+                'jobId': job_id,
+                'filename': filename,
+                'uploadUrl': presigned_url,
+                's3Key': s3_key
+            })
+        
+        return {
+            'batchId': batch_id,
+            'uploadUrls': upload_urls,
+            'insuranceType': insurance_type,
+            'message': f'Generated {len(upload_urls)} upload URLs successfully'
+        }
+    
+    except Exception as e:
+        print(f"Error generating batch upload URLs: {str(e)}")
         raise

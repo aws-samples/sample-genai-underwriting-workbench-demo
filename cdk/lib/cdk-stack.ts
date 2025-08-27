@@ -477,6 +477,7 @@ export class CdkStack extends cdk.Stack {
     // Documents resources
     const documentsResource = apiResource.addResource('documents');
     const uploadResource = documentsResource.addResource('upload');
+    const batchUploadResource = documentsResource.addResource('batch-upload');
     const statusParentResource = documentsResource.addResource('status');
     const statusResource = statusParentResource.addResource('{executionArn}');
     
@@ -498,6 +499,7 @@ export class CdkStack extends cdk.Stack {
     jobByIdResource.addMethod('GET', apiHandlerIntegration);
     documentUrlResource.addMethod('GET', apiHandlerIntegration);
     uploadResource.addMethod('POST', apiHandlerIntegration);
+    batchUploadResource.addMethod('POST', apiHandlerIntegration);
     statusResource.addMethod('GET', apiHandlerIntegration);
     chatByJobIdResource.addMethod('POST', chatLambdaIntegration);
 
@@ -847,6 +849,7 @@ export class CdkStack extends cdk.Stack {
     // Add suppression for API Gateway methods not using authorization
     const apiMethodPaths = [
       '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/upload/POST/Resource',
+      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/batch-upload/POST/Resource',
       '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/status/{executionArn}/GET/Resource',
       '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/{jobId}/document-url/GET/Resource',
       '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/{jobId}/GET/Resource',
