@@ -584,7 +584,8 @@ export class CdkStack extends cdk.Stack {
       ],
     });
 
-    // Deploy frontend to S3
+    // Deploy frontend to S3 - temporarily disabled for local development
+    /*
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend'), {
         bundling: {
@@ -601,6 +602,7 @@ export class CdkStack extends cdk.Stack {
       distribution,
       distributionPaths: ['/*'],
     });
+    */
 
     // Add Nag Suppression for API Handler Lambda
     // This is to suppress the warning for using wildcard permissions in development
@@ -891,7 +893,8 @@ export class CdkStack extends cdk.Stack {
       reason: 'Using Origin Access Identity instead of Origin Access Control for this demo application.',
     }]);
 
-    // Add suppression for CDK Bucket Deployment Lambda role
+    // Add suppression for CDK Bucket Deployment Lambda role - temporarily disabled
+    /*
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource', [{
       id: 'AwsSolutions-IAM4',
       reason: 'CDK-generated BucketDeployment Lambda uses AWS managed policy for Lambda basic execution. This is acceptable for this demo.',
@@ -908,6 +911,7 @@ export class CdkStack extends cdk.Stack {
       id: 'AwsSolutions-L1',
       reason: 'CDK-generated BucketDeployment Lambda runtime is managed by CDK and cannot be modified.',
     }]);
+    */
 
     // Output the CloudFront URL and other important resources
     new cdk.CfnOutput(this, 'FrontendURL', {
