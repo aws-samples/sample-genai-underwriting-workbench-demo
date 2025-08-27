@@ -64,6 +64,9 @@ def validate_analysis_data(data, schema):
 
 def lambda_handler(event, context):
     print("[lambda_handler] Received event:", json.dumps(event))
+    
+    # Initialize analysis_json for error handling
+    analysis_json = {"error": True, "message": "Unknown error occurred"}
 
     # --- 1) Fetch & merge all S3-backed chunks ---
     print("[lambda_handler] Merging extractionResults via S3 pointers")
