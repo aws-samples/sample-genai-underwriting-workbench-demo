@@ -1,6 +1,7 @@
 import json
 import os
 import boto3
+from botocore.config import Config
 from strands import Agent, tool
 from strands.models import BedrockModel # Added import
 from datetime import datetime, timezone # ADDED
@@ -10,10 +11,17 @@ MOCK_OUTPUT_S3_BUCKET = os.environ.get('MOCK_OUTPUT_S3_BUCKET')
 S3_KEY_PREFIX = "agent_outputs/"
 JOBS_TABLE_NAME_ENV = os.environ.get('JOBS_TABLE_NAME') # ADDED
 
-# --- AWS SDK Clients --- 
+# --- AWS SDK Clients with retry configuration --- 
+retry_config = Config(
+    retries={
+        'max_attempts': 10,
+        'mode': 'adaptive'
+    }
+)
+
 try:
-    s3_client = boto3.client('s3')
-    dynamodb_client = boto3.client('dynamodb') # ADDED
+    s3_client = boto3.client('s3', config=retry_config)
+    dynamodb_client = boto3.client('dynamodb', config=retry_config) # ADDED
 except Exception as e:
     print(f"Error initializing Boto3 clients: {e}")
     s3_client = None
@@ -165,7 +173,18 @@ docs_default_str = "\n- " + "\n- ".join(SUPPORTING_DOCUMENTS_MAP["DEFAULT_APP_TY
 # --- Step 2: Initialize Reusable Model Client ---
 # The model client is static and can be reused across invocations.
 try:
-    model = BedrockModel(model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+    # Configure Bedrock client with retry settings
+    bedrock_config = Config(
+        retries={
+            'max_attempts': 10,
+            'mode': 'adaptive'
+        }
+    )
+    bedrock_client = boto3.client('bedrock-runtime', config=bedrock_config)
+    model = BedrockModel(
+        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        client=bedrock_client
+    )
     print("BedrockModel initialized successfully.")
 except Exception as e:
     print(f"CRITICAL: Error initializing BedrockModel: {e}")
