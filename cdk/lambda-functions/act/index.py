@@ -342,7 +342,37 @@ def lambda_handler(event, context):
             model=model # Use the globally initialized model
         )
         
-        agent_response = uw_agent(agent_input_message)
+        # Call agent with retry logic for Bedrock throttling
+        max_retries = 3
+        retry_count = 0
+        agent_response = None
+        
+        while retry_count < max_retries:
+            try:
+                agent_response = uw_agent(agent_input_message)
+                break  # Success, exit retry loop
+            except Exception as agent_e:
+                retry_count += 1
+                error_str = str(agent_e).lower()
+                
+                # Check for throttling errors
+                if any(throttle_indicator in error_str for throttle_indicator in ['throttling', 'rate exceeded', 'too many requests', 'service unavailable']):
+                    if retry_count < max_retries:
+                        wait_time = 2 ** retry_count  # Exponential backoff
+                        print(f"Bedrock throttling detected for {document_identifier}, retry {retry_count}/{max_retries} after {wait_time}s")
+                        import time
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"Max retries exceeded for throttling on {document_identifier}")
+                        raise agent_e
+                else:
+                    # Non-throttling error, don't retry
+                    print(f"Non-throttling error in agent call for {document_identifier}: {agent_e}")
+                    raise agent_e
+        
+        if agent_response is None:
+            raise Exception("Agent failed to respond after retries")
 
         print(f"Agent response for {document_identifier}: {str(agent_response)}")
 
@@ -382,8 +412,30 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        print(f"ERROR: Unhandled exception during Lambda execution for {document_identifier if 'document_identifier' in locals() else 'Unknown Document'}: {str(e)}")
-        # Consider more specific error handling for production
+        error_msg = f"ERROR: Unhandled exception during Lambda execution for {document_identifier if 'document_identifier' in locals() else 'Unknown Document'}: {str(e)}"
+        print(error_msg)
+        
+        # Update DynamoDB status to FAILED if we have job_id
+        if 'job_id' in locals() and job_id and JOBS_TABLE_NAME_ENV:
+            try:
+                timestamp_now = datetime.now(timezone.utc).isoformat()
+                dynamodb_client.update_item(
+                    TableName=JOBS_TABLE_NAME_ENV,
+                    Key={'jobId': {'S': job_id}},
+                    UpdateExpression="SET #status_attr = :status_val, #actionTs = :actionTsVal",
+                    ExpressionAttributeNames={
+                        '#status_attr': 'status',
+                        '#actionTs': 'actionTimestamp'
+                    },
+                    ExpressionAttributeValues={
+                        ':status_val': {'S': 'FAILED'},
+                        ':actionTsVal': {'S': timestamp_now}
+                    }
+                )
+                print(f"Updated job {job_id} status to FAILED due to exception")
+            except Exception as ddb_e:
+                print(f"Error updating DynamoDB status to FAILED for job {job_id}: {str(ddb_e)}")
+        
         return {
             "statusCode": 500,
             "body": json.dumps({"error": f"Internal server error: {str(e)}"})
