@@ -16,6 +16,7 @@ import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import { Names } from 'aws-cdk-lib';
 
 interface CdkStackProps extends cdk.StackProps {
   webAclArn?: string;
@@ -24,6 +25,9 @@ interface CdkStackProps extends cdk.StackProps {
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: CdkStackProps) {
     super(scope, id, props);
+
+    // Generate Unique ID for name
+    const uniqueId = Names.uniqueId(this);
 
     // Create DynamoDB table with updated schema for Lambda architecture
     const jobsTable = new dynamodb.Table(this, 'JobsTable', {
@@ -495,11 +499,34 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       publicReadAccess: false,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000
+        },
+      ],
     });
 
     // Create CloudFront OAI
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI');
     websiteBucket.grantRead(originAccessIdentity);
+
+    // Create CloudFront Response Headers Policy
+    const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'uw-demoResponseHeadersPolicy', {
+      responseHeadersPolicyName: cdk.Fn.join('-', ['uw-demoHeadersPolicy', uniqueId]),
+      comment: 'uw-demo response headers policy',
+      corsBehavior: {
+        accessControlAllowCredentials: false,
+        accessControlAllowHeaders: ['*'],
+        accessControlAllowMethods: ['ALL'],
+        accessControlAllowOrigins: ['*'],
+        accessControlMaxAge: cdk.Duration.seconds(600),
+        originOverride: true,
+      }
+    }); 
 
     // Create CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
@@ -507,15 +534,20 @@ export class CdkStack extends cdk.Stack {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
           originAccessIdentity,
         }),
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        responseHeadersPolicy: responseHeadersPolicy,
       },
       ...(props?.webAclArn && { webAclId: props.webAclArn }),
       additionalBehaviors: {
         '/api/*': {
           origin: new origins.RestApiOrigin(api),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          responseHeadersPolicy: responseHeadersPolicy,
         },
       },
       defaultRootObject: 'index.html',
