@@ -6,12 +6,13 @@ import remarkGfm from 'remark-gfm'
 import '../styles/JobPage.css'
 import { useNavigate } from 'react-router-dom'
 import { HowItWorksDrawer } from './HowItWorksDrawer'
+import { PolicyMarkdownViewer } from './PolicyMarkdownViewer'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faFileAlt, faFileContract, faComments, faChevronRight, faChevronLeft, 
-  faExpandAlt, faCompressAlt, faSearchPlus, faSearchMinus, faInfoCircle, 
-  faFileMedical, faFileInvoiceDollar, faIdCard, faClipboardList, faUpload, 
-  faFileImage, faCog, faDatabase, faCheckCircle, faUserMd, faPills, faFlask, 
+  faSearchPlus, faSearchMinus, faInfoCircle, 
+  faFileMedical, faFileInvoiceDollar, faClipboardList, faUpload, 
+  faDatabase, faCheckCircle, faUserMd, faPills, faFlask, 
   faHeartbeat, faVial, faLungs, faProcedures, faXRay, faStethoscope, 
   faNotesMedical, faMicroscope, faHospital, faAllergies, faTooth, faEye, 
   faBriefcaseMedical, faHistory, faHome, faCar, faBuilding, faUmbrella, 
@@ -19,6 +20,7 @@ import {
   faHardHat, faIndustry, faCloudShowersHeavy, faWind, faRoad, 
   faShieldAlt, faGavel, faList, faClipboardCheck,
   faSpinner, faHourglassHalf, faTimesCircle, faPrint, faSyncAlt,
+  faBook,
   faRobot, faEnvelope, faTimes
 } from '@fortawesome/free-solid-svg-icons'
 
@@ -50,10 +52,6 @@ const generateMarkdownComponents = (styles: Record<string, CSSProperties>): Reco
   return components;
 };
 
-interface PageAnalysis {
-  [key: string]: string
-}
-
 interface UnderwriterAnalysis {
   RISK_ASSESSMENT: string
   DISCREPANCIES: string
@@ -66,12 +64,6 @@ interface PageData {
   page_type: string;
   content: string;
   numeric_page_num_for_nav?: number;
-}
-
-interface Bookmark {
-  title: string;
-  startPage: number;
-  pages: number[];
 }
 
 interface AnalysisData {
@@ -95,51 +87,13 @@ interface Message {
   timestamp: Date;
 }
 
-interface JobApiResponse {
-  jobId: string;
-  originalFilename: string;
-  documentType?: string;
-  status: string;
-  timestamp: string;
-  insurance_type?: 'life' | 'property_casualty';
-  extractedData?: Record<string, any>;
-  analysisOutput?: AnalysisOutput;
-  agentActionOutput?: AgentActionData;
-  extracted_data?: {
-    sections?: Array<{
-      title: string;
-      content: string;
-      start_page_number?: number;
-      findings?: Array<{ type: string; description: string; severity?: string; page_references?: number[]; }>;
-    }>;
-    key_value_pairs?: Record<string, string>;
-    tables?: Array<{ name: string; rows: Array<Record<string, string>> }>;
-  };
-  extractedDataJsonStr?: string;
-  analysisOutputJsonStr?: string;
-  agentActionOutputJsonStr?: string;
-  analysis_summary?: string;
-  identified_risks?: Array<{ description: string; severity?: string; page_references?: number[]; }>;
-  underwriting_recommendation?: string;
-  discrepancies_summary?: string;
-  medical_timeline_summary?: string;
-  property_assessment_summary?: string;
-  error_message?: string;
-}
-
 interface AgentActionData {
   document_identifier: string;
   agent_action_confirmation: string;
   message: string;
 }
 
-interface AnalysisOutput {
-  identified_risks?: Array<{ risk_description: string; severity?: string; page_references?: number[] }>;
-  discrepancies?: Array<{ discrepancy_description: string; details: string; page_references?: number[] }>;
-  medical_timeline?: string;
-  property_assessment?: string;
-  final_recommendation?: string;
-}
+// type left intentionally for historical context; not used directly in UI
 
 const markdownStyles: Record<string, CSSProperties> = {
   p: { margin: '0.5em 0' }, 'h1,h2,h3,h4,h5,h6': { margin: '0.5em 0' },
@@ -153,10 +107,10 @@ const markdownStyles: Record<string, CSSProperties> = {
 // Generate the components object once from markdownStyles
 const customMarkdownComponentsFromStyles = generateMarkdownComponents(markdownStyles);
 
-type TabType = 'grouped' | 'underwriter' | 'chat';
+type TabType = 'grouped' | 'underwriter' | 'detection' | 'scoring' | 'chat';
 
 const PageReference = ({ pageNum, text }: { pageNum: string, text: string }) => {
-  const [currentPage, setCurrentPage] = useContext(PageContext)
+  const [, setCurrentPage] = useContext(PageContext)
   const [numPages] = useContext(NumPagesContext)
 
   const handleClick = (e: React.MouseEvent) => {
@@ -221,6 +175,58 @@ const getDocumentIcon = (documentType: string) => {
   return faFileAlt;
 };
 
+// Converts occurrences like "Page 16" or "Pages 27-29" into clickable links
+// that set the PDF to the referenced page using the existing PageReference component.
+const linkifyPageRefsInText = (text: string): (string | JSX.Element)[] => {
+  if (!text) return [""];
+  const nodes: (string | JSX.Element)[] = [];
+  // Matches: Page 12, Pg 12, Pages 27-29 (en dash or hyphen)
+  const regex = /\b(Pages?|Pg\.?)[\s]+(\d+)(?:[\s]*[-–][\s]*(\d+))?\b/gi;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const before = text.slice(lastIndex, match.index);
+    if (before) nodes.push(before);
+    const pageStart = parseInt(match[2], 10);
+    const linkText = match[0];
+    nodes.push(
+      <PageReference
+        key={`page-ref-${match.index}-${pageStart}`}
+        pageNum={String(pageStart)}
+        text={linkText}
+      />
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes.length ? nodes : [text];
+};
+
+// Attempts to discover a representative page number from arbitrary extracted data
+// by looking for a numeric `page_number` (or `start_page_number`) field.
+const getFirstPageNumberFromData = (data: any): number | undefined => {
+  const search = (node: any): number | undefined => {
+    if (node == null) return undefined;
+    if (typeof node === 'object') {
+      if (typeof (node as any).page_number === 'number') return (node as any).page_number;
+      if (typeof (node as any).start_page_number === 'number') return (node as any).start_page_number;
+      if (Array.isArray(node)) {
+        for (const item of node) {
+          const found = search(item);
+          if (typeof found === 'number') return found;
+        }
+        return undefined;
+      }
+      for (const key of Object.keys(node)) {
+        const found = search((node as any)[key]);
+        if (typeof found === 'number') return found;
+      }
+    }
+    return undefined;
+  };
+  return search(data);
+};
+
 // Define status mapping for user-friendly display
 const STATUS_MAPPING = {
   'CREATED': {
@@ -242,6 +248,16 @@ const STATUS_MAPPING = {
     step: 2,
     phase: 'Extracting Information',
     details: 'Advanced AI models are reading through the document and extracting key information and data points...'
+  },
+  'DETECTING': {
+    step: 3,
+    phase: 'Detecting Impairments',
+    details: 'The AI is identifying impairments and required scoring factors...'
+  },
+  'SCORING': {
+    step: 4,
+    phase: 'Scoring Impairments',
+    details: 'The AI is calculating impairment sub-totals and overall score...'
   },
   'ANALYZING': {
     step: 3,
@@ -283,8 +299,8 @@ export function JobPage({ jobId }: JobPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('grouped')
   const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null)
   const [isFetchingPdfUrl, setIsFetchingPdfUrl] = useState<boolean>(false);
-  const [pdfBlob, setPdfBlobState] = useState<Blob | null>(null)
-  const [insuranceType, setInsuranceTypeState] = useState<'life' | 'property_casualty'>('life')
+  const [pdfBlob] = useState<Blob | null>(null)
+  const [, setInsuranceTypeState] = useState<'life' | 'property_casualty'>('life')
   const [documentType, setDocumentType] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -301,6 +317,9 @@ export function JobPage({ jobId }: JobPageProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false)
   const [pdfWidth, setPdfWidth] = useState<number | undefined>(undefined)
+  const [showPolicy, setShowPolicy] = useState<{ key: string } | null>(null)
+  const [detection, setDetection] = useState<any | null>(null)
+  const [scoring, setScoring] = useState<any | null>(null)
 
   const [isLoadingJobDetails, setIsLoadingJobDetails] = useState(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -309,8 +328,7 @@ export function JobPage({ jobId }: JobPageProps) {
   const [agentActionData, setAgentActionData] = useState<AgentActionData | null>(null);
   const [showAgentActionPopup, setShowAgentActionPopup] = useState(false);
 
-  // ADDED - Use ref to track current PDF URL to avoid dependency cycles
-  const currentPdfUrlRef = useRef<string | null>(null);
+  // (removed unused currentPdfUrlRef)
 
   // ADDED - Function to format document type for display
   const formatDocumentType = (docType: string | null): string => {
@@ -321,6 +339,20 @@ export function JobPage({ jobId }: JobPageProps) {
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  };
+
+  const deriveManualRouteFromKbLocation = (kb: string | null | undefined): string | null => {
+    if (!kb || typeof kb !== 'string') return null;
+    try {
+      const withoutExt = kb.replace(/\.md$/i, '');
+      const lastManualIdx = withoutExt.lastIndexOf('/manual/');
+      if (lastManualIdx === -1) return null;
+      const suffix = withoutExt.substring(lastManualIdx + '/manual/'.length);
+      if (!suffix) return null;
+      return `/manual/${suffix}`;
+    } catch {
+      return null;
+    }
   };
 
   const fetchDocumentUrl = useCallback(async () => {
@@ -363,7 +395,7 @@ export function JobPage({ jobId }: JobPageProps) {
         throw new Error(errorMsg);
       }
 
-      const jobApiData: JobApiResponse = await response.json();
+      const jobApiData: any = await response.json();
 
       const pageAnalysisTransformed: Record<string, PageData> = {};
 
@@ -376,10 +408,11 @@ export function JobPage({ jobId }: JobPageProps) {
               const value = jobApiData.extractedData[key];
               // Create a human-readable title from the key
               const title = key.replace(/_/g, ' ');
+              const inferredPage = getFirstPageNumberFromData(value);
               pageAnalysisTransformed[key] = {
                 page_type: title, // This will be the group title
                 content: `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``, // Markdown for JSON code block
-                // numeric_page_num_for_nav can be omitted or set to a default like 1 if not applicable
+                numeric_page_num_for_nav: typeof inferredPage === 'number' ? inferredPage : undefined,
               };
             }
           }
@@ -398,10 +431,11 @@ export function JobPage({ jobId }: JobPageProps) {
                 const value = parsedExtraction[key];
                 // Create a human-readable title from the key
                 const title = key.replace(/_/g, ' ').replace(/\\b\\w/g, char => char.toUpperCase());
+                const inferredPage = getFirstPageNumberFromData(value);
                 pageAnalysisTransformed[key] = {
                   page_type: title, // This will be the group title
                   content: `\`\`\`json\\n${JSON.stringify(value, null, 2)}\\n\`\`\``, // Markdown for JSON code block
-                  // numeric_page_num_for_nav can be omitted or set to a default like 1 if not applicable
+                  numeric_page_num_for_nav: typeof inferredPage === 'number' ? inferredPage : undefined,
                 };
               }
             }
@@ -420,11 +454,11 @@ export function JobPage({ jobId }: JobPageProps) {
         }
       } else if (jobApiData.extracted_data?.sections && jobApiData.extracted_data.sections.length > 0) {
         // Fallback to existing sections logic if extractedDataJsonStr is not present
-        jobApiData.extracted_data.sections.forEach((section, index) => {
+        jobApiData.extracted_data.sections.forEach((section: any, index: number) => {
           const key = section.title || `section-${index}`;
           let content = section.content || "";
           if (section.findings && section.findings.length > 0) {
-            content += "\n\n**Findings:**\n" + section.findings.map(f => `- ${f.type}: ${f.description} (Severity: ${f.severity || 'N/A'})${f.page_references && f.page_references.length > 0 ? ` (Pages: ${f.page_references.join(', ')})` : ''}`).join("\n");
+            content += "\n\n**Findings:**\n" + section.findings.map((f: any) => `- ${f.type}: ${f.description} (Severity: ${f.severity || 'N/A'})${f.page_references && f.page_references.length > 0 ? ` (Pages: ${f.page_references.join(', ')})` : ''}`).join("\n");
           }
           pageAnalysisTransformed[key] = {
             page_type: section.title || "Section",
@@ -524,7 +558,7 @@ export function JobPage({ jobId }: JobPageProps) {
           // Fall through to legacy approach
           underwriterAnalysisTransformed = {
             RISK_ASSESSMENT: jobApiData.identified_risks 
-              ? jobApiData.identified_risks.map(r => `- ${r.description} (Severity: ${r.severity || 'N/A'})${r.page_references && r.page_references.length > 0 ? ` (Pages: ${r.page_references.join(', ')})` : ''}`).join("\n") 
+              ? jobApiData.identified_risks.map((r: any) => `- ${r.description} (Severity: ${r.severity || 'N/A'})${r.page_references && r.page_references.length > 0 ? ` (Pages: ${r.page_references.join(', ')})` : ''}`).join("\n") 
               : "Not available.",
             DISCREPANCIES: jobApiData.discrepancies_summary || "Not available.",
             MEDICAL_TIMELINE: jobApiData.insurance_type === 'life' ? (jobApiData.medical_timeline_summary || "Not available.") : undefined,
@@ -537,7 +571,7 @@ export function JobPage({ jobId }: JobPageProps) {
         console.log("Using legacy fields for underwriter analysis");
         underwriterAnalysisTransformed = {
           RISK_ASSESSMENT: jobApiData.identified_risks 
-            ? jobApiData.identified_risks.map(r => `- ${r.description} (Severity: ${r.severity || 'N/A'})${r.page_references && r.page_references.length > 0 ? ` (Pages: ${r.page_references.join(', ')})` : ''}`).join("\n") 
+            ? jobApiData.identified_risks.map((r: any) => `- ${r.description} (Severity: ${r.severity || 'N/A'})${r.page_references && r.page_references.length > 0 ? ` (Pages: ${r.page_references.join(', ')})` : ''}`).join("\n") 
             : "Not available.",
           DISCREPANCIES: jobApiData.discrepancies_summary || "Not available.",
           MEDICAL_TIMELINE: jobApiData.insurance_type === 'life' ? (jobApiData.medical_timeline_summary || "Not available.") : undefined,
@@ -556,6 +590,9 @@ export function JobPage({ jobId }: JobPageProps) {
         insurance_type: jobApiData.insurance_type,
       };
       setAnalysisData(newAnalysisData);
+
+      if (jobApiData.analysisDetection) setDetection(jobApiData.analysisDetection)
+      if (jobApiData.analysisScoring) setScoring(jobApiData.analysisScoring)
 
       // fetchDocumentUrl(); // Always fetch the document URL after job data is received
       // REMOVED from here to decouple from polling loop
@@ -716,19 +753,7 @@ export function JobPage({ jobId }: JobPageProps) {
     setNumPagesState(loadedNumPages);
   };
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const href = e.currentTarget.getAttribute('href');
-    if (href?.startsWith('/page/')) {
-      const pageNumStr = href.split('/').pop();
-      if (pageNumStr) {
-        const page = parseInt(pageNumStr);
-        if (!isNaN(page) && page > 0 && page <= (numPages || 0)) {
-          setCurrentPageState(page);
-        }
-      }
-    }
-  };
+  // link navigation handled via PageReference; keep reserved for future use
   
   const renderGroupedAnalysis = () => {
     const localAnalysisData = analysisData;
@@ -771,7 +796,7 @@ export function JobPage({ jobId }: JobPageProps) {
               >
                 <div className="group-title">
                   <FontAwesomeIcon icon={getDocumentIcon(groupTitle)} />
-                  Page {groupTitle} 
+                  {groupTitle}
                 </div>
                 <FontAwesomeIcon icon={expandedGroups.has(groupTitle) ? faChevronLeft : faChevronRight} />
               </button>
@@ -783,10 +808,7 @@ export function JobPage({ jobId }: JobPageProps) {
                       className={`page-card ${currentPage === page.numericPageNum ? 'active' : ''}`}
                       onClick={() => setCurrentPageState(page.numericPageNum)}
                     >
-                      <div className="page-header">
-                        <div className="page-number">{page.pageType}</div>
-                      </div>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={customMarkdownComponentsFromStyles}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{...customMarkdownComponentsFromStyles, a: ({href, children}) => (<PageReference pageNum={href?.replace("/page/","") || "1"} text={String(children)} />)}}>
                         {page.content}
                       </ReactMarkdown>
                     </div>
@@ -800,56 +822,131 @@ export function JobPage({ jobId }: JobPageProps) {
     );
   };
 
-  const renderUnderwriterAnalysis = () => {
-    const localAnalysisData = analysisData;
-    if (!localAnalysisData?.underwriter_analysis) {
-      if (isLoadingJobDetails || currentPhase !== 'Complete') return <p>Loading underwriter analysis...</p>;
-      return <p>No underwriter analysis available.</p>;
-    }
-    
-    interface SectionConfigItem {
-      key: keyof UnderwriterAnalysis;
-      icon: any; // Ideally FontAwesomeIconDefinition, but 'any' for brevity here
-      title: string; // Explicit title for display
+  
+
+  const renderDetection = () => {
+    if (!detection) return <p>No detection results.</p>
+    const items = detection.impairments || []
+    if (!items.length && !detection.narrative) return <p>No impairments detected.</p>
+
+    const formatValue = (val: any) => {
+      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+      if (val === null || val === undefined) return '—';
+      return String(val)
     }
 
-    const sectionConfig: SectionConfigItem[] = localAnalysisData.insurance_type === 'property_casualty' 
-      ? [
-          { key: 'RISK_ASSESSMENT', icon: faClipboardCheck, title: 'Risk Assessment' }, 
-          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
-          { key: 'PROPERTY_ASSESSMENT', icon: faHome, title: 'Property Assessment' }, 
-          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
-        ]
-      : [
-          { key: 'RISK_ASSESSMENT', icon: faBriefcaseMedical, title: 'Risk Assessment' }, 
-          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
-          { key: 'MEDICAL_TIMELINE', icon: faHistory, title: 'Medical Timeline' }, 
-          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
-        ];
-    
     return (
-      <div className="underwriter-analysis">
-        {sectionConfig.map((item) => {
-          // item.key is now correctly typed as keyof UnderwriterAnalysis
-          const content = localAnalysisData.underwriter_analysis[item.key];
-          // Only render the section if its key is relevant for the insurance type AND content exists
-          if (!content || content === "Not available.") return null;
-          // For optional fields, explicitly check if they should be rendered based on insurance type
-          if (item.key === 'MEDICAL_TIMELINE' && localAnalysisData.insurance_type !== 'life') return null;
-          if (item.key === 'PROPERTY_ASSESSMENT' && localAnalysisData.insurance_type !== 'property_casualty') return null;
+      <div className="detection-tab">
+        {!!detection.narrative && (
+          <div className="narrative-card">
+            <h3><FontAwesomeIcon icon={faClipboardCheck} /> Summary Narrative</h3>
+            <div className="narrative-text">{linkifyPageRefsInText(String(detection.narrative))}</div>
+          </div>
+        )}
 
+        {!!detection.narrative && items.length > 0 && (
+          <div className="section-divider"><span>Detected Impairments</span></div>
+        )}
+
+        {items.map((imp: any, idx: number) => {
+          const manualUrl = deriveManualRouteFromKbLocation(imp.knowledgebase_location);
           return (
-            <div key={item.key} className="analysis-section">
-              <h3><FontAwesomeIcon icon={item.icon} /> {item.title}</h3>
-              <div className="analysis-content">
-                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{...customMarkdownComponentsFromStyles, a: ({href, children}) => (<PageReference pageNum={href?.replace("/page/","") || "1"} text={children as string}/>) }}>{content}</ReactMarkdown>
-              </div>
+          <div key={idx} className="impairment-card">
+            <div className="imp-header">
+              <div className="name"><strong>{formatDocumentType(imp.impairment_id || imp.name || 'Impairment')}</strong></div>
+              {manualUrl && (
+                <a className="manual-link" href={manualUrl} target="_blank" rel="noopener noreferrer" title="Open Manual Entry">
+                  <FontAwesomeIcon icon={faBook} /> View Guidelines for {formatDocumentType(imp.impairment_id || imp.name)}
+                </a>
+              )}
             </div>
-          );
-        })}
+
+            {!!(imp.evidence?.length) && (
+              <div className="imp-section">
+                <div className="section-title">Evidence</div>
+                <ul className="evidence-list">
+                  {imp.evidence.map((e: any, i: number) => (
+                    <li key={i} className="evidence-item">{linkifyPageRefsInText(String(e))}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!!imp.scoring_factors && Object.keys(imp.scoring_factors).length > 0 && (
+              <div className="imp-section">
+                <div className="section-title">Scoring Factors</div>
+                <div className="factor-chips">
+                  {Object.entries(imp.scoring_factors).map(([k, v]: [string, any]) => (
+                    <div key={k} className="factor-chip">
+                      <span className="factor-name">{k}</span>
+                      <span className="factor-value">{formatValue(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!!(imp.discrepancies?.length) && (
+              <div className="imp-section discrepancies">
+                <div className="section-title"><FontAwesomeIcon icon={faExclamationTriangle} /> Discrepancies</div>
+                <ul className="discrepancy-list">
+                  {imp.discrepancies.map((d: any, i: number) => (
+                    <li key={i}>{linkifyPageRefsInText(String(d))}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )})}
       </div>
-    );
-  };
+    )
+  }
+
+  const renderScoring = () => {
+    if (!scoring) return <p>No scoring results.</p>
+
+    const normalizeScoring = (raw: any) => {
+      const s = raw && typeof raw === 'object' && raw.scoring && typeof raw.scoring === 'object' ? raw.scoring : raw;
+      const total = s?.total_score ?? s?.totalScore ?? null;
+      const items = Array.isArray(s?.impairment_scores) ? s.impairment_scores : [];
+      return { total, items };
+    };
+
+    const { total, items } = normalizeScoring(scoring);
+    if (!items.length && (total === null || total === undefined)) return <p>No impairments scored.</p>
+
+    const safeTotal = (total === null || total === undefined) ? '—' : String(total);
+
+    return (
+      <div className="scoring-tab">
+        <div className="score-summary-card">
+          <h3><FontAwesomeIcon icon={faCheckCircle} /> Overall Score</h3>
+          <div className="score-summary-content">
+            <span className="score-total-badge">{safeTotal}</span>
+          </div>
+        </div>
+
+        {items.length > 0 && (
+          <div className="section-divider"><span>Impairment Scores</span></div>
+        )}
+
+        {items.map((imp: any, idx: number) => (
+          <div key={idx} className="impairment-card">
+            <div className="imp-header">
+              <div className="name"><strong>{formatDocumentType(imp.impairment_id || imp.name || 'Impairment')}</strong></div>
+              <div className="score-badge">{String(imp.sub_total ?? imp.score ?? 0)}</div>
+            </div>
+            {!!imp.reason && (
+              <div className="imp-section">
+                <div className="section-title">Reason</div>
+                <div className="rationale-text">{imp.reason}</div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault(); if (!newMessage.trim()) return;
@@ -915,6 +1012,16 @@ export function JobPage({ jobId }: JobPageProps) {
                 <FontAwesomeIcon icon={faList} style={{ marginRight: '8px' }} />
                 View All Jobs
               </button>
+              {analysisData?.insurance_type === 'life' && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/manual')}
+                  className="nav-button"
+                >
+                  <FontAwesomeIcon icon={faStethoscope} style={{ marginRight: '8px' }} />
+                  Underwriting Manual
+                </button>
+              )}
               <button className="how-it-works-button" onClick={() => setIsHowItWorksOpen(true)}>
                 <FontAwesomeIcon icon={faInfoCircle} /> How It Works
               </button>
@@ -1087,8 +1194,12 @@ export function JobPage({ jobId }: JobPageProps) {
                     <button className={`tab-button ${activeTab === 'grouped' ? 'active' : ''}`} onClick={() => setActiveTab('grouped')}>
                       <FontAwesomeIcon icon={faList} /> Document Analysis
             </button>
-                    <button className={`tab-button ${activeTab === 'underwriter' ? 'active' : ''}`} onClick={() => setActiveTab('underwriter')}>
-                      <FontAwesomeIcon icon={faGavel} /> Underwriter Analysis
+                    <button className={`tab-button ${activeTab === 'detection' ? 'active' : ''}`} onClick={() => setActiveTab('detection')}>
+                      <FontAwesomeIcon icon={faClipboardCheck} /> Impairment Detection Agent
+            </button>
+                    
+                    <button className={`tab-button ${activeTab === 'scoring' ? 'active' : ''}`} onClick={() => setActiveTab('scoring')}>
+                      <FontAwesomeIcon icon={faCheckCircle} /> Scoring Agent
             </button>
                     <button className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
                       <FontAwesomeIcon icon={faComments} /> Chat Assistant
@@ -1101,7 +1212,9 @@ export function JobPage({ jobId }: JobPageProps) {
                   </div>
                   <div className="tab-content">
                     {activeTab === 'grouped' && renderGroupedAnalysis()}
-                    {activeTab === 'underwriter' && renderUnderwriterAnalysis()}
+                    {activeTab === 'detection' && renderDetection()}
+                    
+                    {activeTab === 'scoring' && renderScoring()}
                     {activeTab === 'chat' && (
                       <div className="chat-interface">
                         <div className="chat-messages">
@@ -1124,6 +1237,14 @@ export function JobPage({ jobId }: JobPageProps) {
             </div>
           </div>
               </Split>
+              {showPolicy && (
+                <div className="policy-viewer-modal">
+                  <div className="policy-viewer-backdrop" onClick={() => setShowPolicy(null)} />
+                  <div className="policy-viewer-panel">
+                    <PolicyMarkdownViewer source={{ type: 's3', key: showPolicy.key }} onClose={() => setShowPolicy(null)} />
+                  </div>
+                </div>
+              )}
               <button className="analysis-toggle" onClick={() => setIsAnalysisPanelOpen(!isAnalysisPanelOpen)} aria-label={isAnalysisPanelOpen ? "Hide Analysis" : "Show Analysis"}>
                 <FontAwesomeIcon icon={isAnalysisPanelOpen ? faChevronLeft : faChevronRight} />
               </button>

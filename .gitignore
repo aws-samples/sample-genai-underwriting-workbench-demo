@@ -15,3 +15,6 @@ node_modules
 */.venv
 */venv
 .kiro/
+cdk-outputs.json
+frontend/public/manual
+frontend/public/manual-manifest.json
