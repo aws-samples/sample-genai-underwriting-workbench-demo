@@ -16,11 +16,18 @@ import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import { NagSuppressions } from 'cdk-nag';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
+import { Names } from 'aws-cdk-lib';
+
+interface CdkStackProps extends cdk.StackProps {
+  webAclArn?: string;
+}
 
 export class CdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: CdkStackProps) {
     super(scope, id, props);
+
+    // Generate Unique ID for name
+    const uniqueId = Names.uniqueId(this);
 
     // Create DynamoDB table with updated schema for Lambda architecture
     const jobsTable = new dynamodb.Table(this, 'JobsTable', {
@@ -29,9 +36,11 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
     });
 
+
+
     // Create S3 bucket for document uploads
     const documentBucket = new s3.Bucket(this, 'DocumentBucket', {
-      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'landing']),
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, cdk.Aws.REGION, 'landing']),
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
       autoDeleteObjects: true,
@@ -39,14 +48,8 @@ export class CdkStack extends cdk.Stack {
       eventBridgeEnabled: true,
       cors: [
         {
-          allowedMethods: [
-            s3.HttpMethods.PUT,
-            s3.HttpMethods.POST,
-            s3.HttpMethods.GET,
-            s3.HttpMethods.DELETE,
-            s3.HttpMethods.HEAD,
-          ],
-          allowedOrigins: ['*'], // This will be replaced by CloudFront domain in production
+          allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
+          allowedOrigins: ['*'],
           allowedHeaders: ['*'],
           exposedHeaders: ['ETag'],
           maxAge: 3000
@@ -61,27 +64,12 @@ export class CdkStack extends cdk.Stack {
 
     // Create S3 bucket to store extraction chunks
     const extractionBucket = new s3.Bucket(this, 'ExtractionBucket', {
-      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'extraction-chunks']),
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, cdk.Aws.REGION, 'extraction-chunks']),
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
       autoDeleteObjects: true,
       versioned: true,
       eventBridgeEnabled: true,
-      cors: [
-        {
-          allowedMethods: [
-            s3.HttpMethods.PUT,
-            s3.HttpMethods.POST,
-            s3.HttpMethods.GET,
-            s3.HttpMethods.DELETE,
-            s3.HttpMethods.HEAD,
-          ],
-          allowedOrigins: ['*'], // This will be replaced by CloudFront domain in production
-          allowedHeaders: ['*'],
-          exposedHeaders: ['ETag'],
-          maxAge: 3000
-        },
-      ],
       lifecycleRules: [
         {
           expiration: cdk.Duration.days(30), // Auto-delete files after 30 days
@@ -92,7 +80,7 @@ export class CdkStack extends cdk.Stack {
 
     // Create S3 bucket for mock output files
     const mockOutputBucket = new s3.Bucket(this, 'MockOutputBucket', {
-      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'mock-output']),
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, cdk.Aws.REGION, 'mock-output']),
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
@@ -485,6 +473,7 @@ export class CdkStack extends cdk.Stack {
     const jobsResource = apiResource.addResource('jobs');
     const jobByIdResource = jobsResource.addResource('{jobId}');
     const documentUrlResource = jobByIdResource.addResource('document-url');
+    const documentResource = jobByIdResource.addResource('document');
     
     // Chat resources
     const chatResource = apiResource.addResource('chat');
@@ -498,6 +487,7 @@ export class CdkStack extends cdk.Stack {
     jobsResource.addMethod('GET', apiHandlerIntegration);
     jobByIdResource.addMethod('GET', apiHandlerIntegration);
     documentUrlResource.addMethod('GET', apiHandlerIntegration);
+    documentResource.addMethod('GET', apiHandlerIntegration);
     uploadResource.addMethod('POST', apiHandlerIntegration);
     batchUploadResource.addMethod('POST', apiHandlerIntegration);
     statusResource.addMethod('GET', apiHandlerIntegration);
@@ -509,53 +499,34 @@ export class CdkStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       publicReadAccess: false,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000
+        },
+      ],
     });
 
     // Create CloudFront OAI
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI');
     websiteBucket.grantRead(originAccessIdentity);
 
-    // Create IP set for CloudFront distribution
-    const whitelistIpSet = new wafv2.CfnIPSet(this, 'WhitelistIPSet', {
-      name: 'WhitelistIPSet',
-      scope: 'CLOUDFRONT',
-      ipAddressVersion: 'IPV4',
-      addresses: []
-    });
-
-   // Create WAFv2 Web ACL for CloudFront distribution
-    const webAcl = new wafv2.CfnWebACL(this, 'WhitelistIPSetWebAcl', {
-      name: 'WhitelistIPSetWebAcl',
-      scope: 'CLOUDFRONT',
-      defaultAction: {
-        allow: {}
-      },
-      rules: [
-        {
-          name: 'AllowWhitelistIPSetRule',
-          priority: 1,
-          statement: {
-            ipSetReferenceStatement: {
-              arn: whitelistIpSet.attrArn,
-            }
-          },
-          action: {
-            allow: {}
-          },
-          visibilityConfig: {
-            sampledRequestsEnabled: true,
-            cloudWatchMetricsEnabled: true,
-            metricName: 'AllowWhitelistIPSetRule',
-          }
-        }
-      ],
-      visibilityConfig: {
-        sampledRequestsEnabled: true,
-        cloudWatchMetricsEnabled: true,
-        metricName: 'CloudFrontWebAcl',
-      },
-    });
-
+    // Create CloudFront Response Headers Policy
+    const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'uw-demoResponseHeadersPolicy', {
+      responseHeadersPolicyName: cdk.Fn.join('-', ['uw-demoHeadersPolicy', uniqueId]),
+      comment: 'uw-demo response headers policy',
+      corsBehavior: {
+        accessControlAllowCredentials: false,
+        accessControlAllowHeaders: ['*'],
+        accessControlAllowMethods: ['ALL'],
+        accessControlAllowOrigins: ['*'],
+        accessControlMaxAge: cdk.Duration.seconds(600),
+        originOverride: true,
+      }
+    }); 
 
     // Create CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
@@ -563,15 +534,20 @@ export class CdkStack extends cdk.Stack {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
           originAccessIdentity,
         }),
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        responseHeadersPolicy: responseHeadersPolicy,
       },
-      webAclId: webAcl.attrArn,
+      ...(props?.webAclArn && { webAclId: props.webAclArn }),
       additionalBehaviors: {
         '/api/*': {
           origin: new origins.RestApiOrigin(api),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          responseHeadersPolicy: responseHeadersPolicy,
         },
       },
       defaultRootObject: 'index.html',
@@ -866,6 +842,15 @@ export class CdkStack extends cdk.Stack {
         reason: 'Cognito user pool is not used for this demo application.',
       }]);
     });
+
+    // Add suppression for the document endpoint specifically
+    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/{jobId}/document/GET/Resource', [{
+      id: 'AwsSolutions-APIG4',
+      reason: 'API authorization is not implemented for this demo application.',
+    }, {
+      id: 'AwsSolutions-COG4',
+      reason: 'Cognito user pool is not used for this demo application.',
+    }]);
 
     // Add suppression for Step Function Role DefaultPolicy wildcard permissions
     NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentProcessingWorkflow/Role/DefaultPolicy/Resource', [{
