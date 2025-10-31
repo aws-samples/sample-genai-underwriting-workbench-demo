@@ -125,7 +125,7 @@ def calculator(values: list[float]):
 
 
 # --- Prompt (verbatim from notebook) ---
-PROMPT = """You are a senior life insurance underwriter specializing in risk assessment scoring. Your job is to calculate a risk score for an application based on a list of identified impairments and their scoring factors.
+LIFE_PROMPT = """You are a senior life insurance underwriter specializing in risk assessment scoring. Your job is to calculate a risk score for an application based on a list of identified impairments and their scoring factors.
 
 You will be given a JSON array of impairments. For each impairment in the input list, you must perform the following steps in sequence:
 
@@ -158,13 +158,43 @@ Your output must be in this exact format:
 ```
 """
 
+PC_PROMPT = """You are a senior property and casualty insurance underwriter specializing in risk assessment scoring for P&C exposures.
 
-def _build_agent() -> object:
-    return Agent(
-        system_prompt=PROMPT,
-        tools=[kb_search, calculator],
-        model=MODEL_ID,
-    )
+You will be given a JSON array of P&C risk drivers (labeled as "impairments" for consistency) with their scoring factors. For each item in the list, you must:
+
+1. Identify debits and credits based on standard P&C underwriting judgment for those factors (e.g., construction and protection improving fire risk, hazardous operations increasing liability, strong alarms/sprinklers reducing risk). Use conservative but reasonable values.
+2. Create a list of numerical debits (positive) and credits (negative). Call the `calculator` tool to get a `sub_total`.
+3. Provide a concise `reason` string explaining the key factors that drove the sub_total.
+
+Important: Do NOT use any knowledge base or life underwriting manual. There is no KB tool for P&C.
+
+Finally, return a single JSON object exactly like this:
+```json
+{
+  "total_score": 0,
+  "impairment_scores": [
+    {"impairment_id": "fire_risk", "sub_total": 10, "reason": "Masonry noncombustible with sprinklers (-10), remote hydrant (+20). Net +10."}
+  ]
+}
+```
+"""
+
+
+def _build_agent(insurance_type: str | None) -> object:
+    itype = (insurance_type or '').lower()
+    if itype == 'life':
+        return Agent(
+            system_prompt=LIFE_PROMPT,
+            tools=[kb_search, calculator],
+            model=MODEL_ID,
+        )
+    else:
+        # property_casualty: exclude KB tool
+        return Agent(
+            system_prompt=PC_PROMPT,
+            tools=[calculator],
+            model=MODEL_ID,
+        )
 
 
 def _to_agent_message(payload: list[dict]) -> str:
@@ -195,8 +225,8 @@ def _to_agent_message(payload: list[dict]) -> str:
     return "Here is the JSON payload of impairments to score:\n\n" + json.dumps(safe_payload, indent=2)
 
 
-def _run_agent_scoring(payload: list[dict]) -> dict:
-    agent = _build_agent()
+def _run_agent_scoring(payload: list[dict], insurance_type: str | None) -> dict:
+    agent = _build_agent(insurance_type)
     message = _to_agent_message(payload)
     res = agent(message)
     res_str = str(res)
@@ -246,10 +276,22 @@ def lambda_handler(event, context):
     # Build payload for the scoring agent
     impairments_payload = _get_impairments_payload(event)
 
+    # Determine insurance type from event or DynamoDB
+    insurance_type: str | None = None
+    try:
+        classification = event.get('classification') if isinstance(event, dict) else None
+        insurance_type = (classification or {}).get('insuranceType')
+        if (not insurance_type) and job_id and JOBS_TABLE_NAME:
+            resp = dynamodb.get_item(TableName=JOBS_TABLE_NAME, Key={'jobId': {'S': job_id}}, ProjectionExpression='insuranceType')
+            item = resp.get('Item') or {}
+            insurance_type = (item.get('insuranceType') or {}).get('S')
+    except Exception:
+        insurance_type = insurance_type or 'property_casualty'
+
     # Run the Strands scoring agent; preserve raw output
     agent_raw: dict
     try:
-        agent_raw = _run_agent_scoring(impairments_payload)
+        agent_raw = _run_agent_scoring(impairments_payload, insurance_type)
     except Exception as e:
         print('[score] Agent scoring error:', str(e))
         agent_raw = {"total_score": 0, "impairment_scores": []}

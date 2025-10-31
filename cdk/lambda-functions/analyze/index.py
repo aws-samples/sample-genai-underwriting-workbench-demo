@@ -71,8 +71,12 @@ def _write_trace(job_id: str, trace_obj: dict) -> str | None:
     return key
 
 
-def _build_agent() -> object:
-    """Construct the Strands Agent with Bedrock-only knowledge base tool and verbatim prompt."""
+def _build_agent(insurance_type: str) -> object:
+    """Construct the Strands Agent with prompts/tools based on insurance type.
+
+    - life: use life underwriting prompt and Bedrock KB tool
+    - property_casualty: use P&C underwriting prompt and DO NOT attach KB tool
+    """
     model_id = os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
 
     @tool
@@ -114,15 +118,10 @@ def _build_agent() -> object:
             knowledgebase_location: {location}
             text_content: {content}
             """
-
-
-            
-            
-            TextLocation: {location}
         except Exception as e:
             return f"KB retrieval error: {e}"
 
-    PROMPT = """You are a senior life insurance underwriter. Your job is to analyze the data stream for an application and identify impairments, 
+    LIFE_PROMPT = """You are a senior life insurance underwriter. Your job is to analyze the data stream for an application and identify impairments, 
 scoring factors (based on the knowledge base), and evidences for those impairments. 
 1. Scan the extracted datafor impairment evidence and write out an initial list of impairments.
 Then for each impairment in your scratch pad, do the following:
@@ -155,6 +154,7 @@ Once you have completed this process for all impairments, return a well-structur
    ],
    "narrative": "Agent Analysis: The applicant has a history of hypertension and diabetes. I cross checked this with the underwriting manual entries on Hypertension and Type 2 Diabetes. The hypertension is well controlled with Lisinopril 10mg, and the diabetes is well controlled with insulin. The applicant has a family history of heart attack in the father."
 }
+```
 
 Explanation of the JSON output:
 - impairment_id: The canonical name of the impairment.
@@ -165,17 +165,46 @@ Explanation of the JSON output:
 - narrative: A high level summary of the analysis of all the impairments. Should include references to the knowledge base entries for the impairments that were used to generate the analysis.
 
    
+"""
+
+    PC_PROMPT = """You are a senior property and casualty insurance underwriter. Analyze the extracted data for risk drivers and underwriting concerns relevant to P&C (not life).
+
+Your goals:
+1. Identify a list of P&C risk drivers (call them "impairments" for consistency), such as: prior losses, construction type and quality, occupancy and operations, fire protection and sprinklers, alarms, location crime/flood/wildfire exposure, values and COPE details, hazardous materials or processes, and clear compliance issues.
+2. For each risk driver, list the specific "scoring_factors" you would evaluate for P&C (for example, for fire risk: construction class, story count, year built, distance to hydrant, sprinklered yes/no, alarm type; for liability: operations description, employee count, premises condition, safety controls).
+3. Gather concise "evidence" strings from the extracted data that support each risk driver and factor.
+
+Important:
+- Do NOT use any life underwriting manual or knowledge base content. There is no KB available for P&C. Do not call any KB tools.
+- Work only from the provided extracted data.
+
+Return a single JSON object in this format:
+```json
+{
+  "impairments": [
+    {
+      "impairment_id": "fire_risk",
+      "scoring_factors": {"construction": "masonry noncombustible", "sprinklered": true, "distance_to_hydrant": "<500ft"},
+      "evidence": ["BCEGS class 3 noted on application (Page 2)", "Sprinklers: wet pipe system throughout (Page 5)"]
+    }
+  ],
+  "narrative": "Brief P&C-focused summary of key risks and supporting evidence."
+}
 ```
 """
 
-    return Agent(system_prompt=PROMPT, tools=[kb_search, scratch_fixed], model=model_id)
+    if (insurance_type or "").lower() == "life":
+        return Agent(system_prompt=LIFE_PROMPT, tools=[kb_search, scratch_fixed], model=model_id)
+    else:
+        # property_casualty: exclude knowledge base tool
+        return Agent(system_prompt=PC_PROMPT, tools=[scratch_fixed], model=model_id)
 
 
 
 
-def _run_agent_detection(extracted_data: dict) -> dict:
+def _run_agent_detection(extracted_data: dict, insurance_type: str) -> dict:
     """Run the Strands Agent and return parsed JSON result."""
-    agent = _build_agent()
+    agent = _build_agent(insurance_type)
     # Feed the raw JSON string directly to the agent (simpler and more faithful)
     message_str = json.dumps(extracted_data, ensure_ascii=False)
     res = agent(message_str)
@@ -231,6 +260,7 @@ def lambda_handler(event, context):
     classification = event.get('classification', {})
     job_id = classification.get('jobId')
     document_type = classification.get('classification')
+    insurance_type = classification.get('insuranceType') or 'property_casualty'
     if job_id and DB_TABLE:
         # Mark status as DETECTING (impairments) prior to analysis
         try:
@@ -259,10 +289,19 @@ def lambda_handler(event, context):
             analysis_json["message"] = f"Error processing input event: {str(e)}"
             return analysis_json
 
+        # If insurance type was not in event, try to load it from DynamoDB
+        if not insurance_type and job_id and DB_TABLE:
+            try:
+                resp = dynamodb_client.get_item(TableName=DB_TABLE, Key={'jobId': {'S': job_id}}, ProjectionExpression='insuranceType')
+                item = resp.get('Item') or {}
+                insurance_type = (item.get('insuranceType') or {}).get('S') or 'property_casualty'
+            except Exception:
+                insurance_type = 'property_casualty'
+
     # --- 3) Detect impairments using Strands Agent (Bedrock KB) ---
     agent_raw = {}
     try:
-        agent_raw = _run_agent_detection(extracted_data)
+        agent_raw = _run_agent_detection(extracted_data, insurance_type)
     except Exception as e:
         print(f"[lambda_handler] Agent detection error: {e}")
         traceback.print_exc()
