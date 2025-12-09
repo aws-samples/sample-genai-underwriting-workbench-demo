@@ -336,6 +336,198 @@
   font-size: 0.9rem;
 }
 
+/* Detection tab enhancements for agent output */
+.detection-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.scoring-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.score-summary-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #059669;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.score-summary-card h3 {
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #065f46;
+}
+
+.score-summary-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-total-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 700;
+  min-width: 44px;
+}
+
+.rationale-text {
+  color: #1a1a1a;
+  line-height: 1.6;
+}
+
+
+.narrative-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.narrative-card h3 {
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e40af;
+}
+
+.narrative-text {
+  color: #1a1a1a;
+  line-height: 1.6;
+}
+
+.impairment-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.impairment-card .imp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.manual-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid #c7d2fe;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.manual-link:hover {
+  background: #e0e7ff;
+  color: #312e81;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(55, 48, 163, 0.2);
+}
+
+.impairment-card .name {
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.imp-section {
+  margin-top: 10px;
+}
+
+.imp-section .section-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.factor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.factor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.factor-name {
+  color: #374151;
+}
+
+.factor-value {
+  font-weight: 600;
+  color: #111827;
+}
+
+.evidence-list,
+.discrepancy-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #1a1a1a;
+}
+
+.discrepancies {
+  border-left: 3px solid #dc2626;
+  padding-left: 10px;
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 2px 0;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.section-divider span {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
 .page-content, .analysis-content {
   white-space: pre-wrap;
   line-height: 1.6;

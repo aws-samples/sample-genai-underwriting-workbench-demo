@@ -1,6 +1,6 @@
 # 🤖 genai-underwriting-workbench-demo
 
-A demonstration project showcasing the power of Amazon Bedrock and Claude 3.7 Sonnet in transforming life insurance underwriting workflows. 
+A demonstration project showcasing the power of Amazon Bedrock and Claude Haiku 4.5 in transforming life and property & casualty underwriting workflows. 
 
 This solution leverages intelligent document processing to streamline the underwriting process by automatically extracting, analyzing, and making accessible critical information from insurance applications and related documents.
 
@@ -15,6 +15,7 @@ This solution leverages intelligent document processing to streamline the underw
   - [Underwriter Analysis](#underwriter-analysis)
   - [Chat Interface](#chat-interface)
 - [Sample Documents](#sample-documents)
+ - [Insurance Types: Life vs P&C](#insurance-types-life-vs-pc)
 - [Deployment](#deployment)
   - [Prerequisites for Deployment](#prerequisites-for-deployment)
   - [Clone the repository and navigate to the project directory](#clone-the-repository-and-navigate-to-the-project-directory)
@@ -71,6 +72,38 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 We have included sample PDF documents in the `sample_documents/` folder. These can be used to test the application's document processing capabilities:
 - `life_submission.pdf`: A sample life insurance application.
 - `p&c_submission.pdf`: A sample property & casualty insurance application.
+
+# 🏷️ Insurance Types: Life vs P&C
+
+This demo supports both Life and Property & Casualty (P&C) underwriting modes. The selected mode controls prompts, tools, and knowledge usage end‑to‑end.
+
+## Life Underwriting Manual
+
+- A Life Underwriting Manual is included in `knowledge-base/manual/` and is indexed into an Amazon Bedrock Knowledge Base during deployment.
+- The manual is consulted by agents only when `insuranceType` is `life`.
+- For `property_casualty`, the manual is not used and the knowledge base tool is not attached to the agents.
+
+## How the agents work
+
+- Analyze (`cdk/lambda-functions/analyze/index.py`)
+  - Life: Runs with a Life Underwriter prompt and includes a `kb_search` tool to reference the manual when identifying impairments and scoring factors.
+  - P&C: Runs with a P&C Underwriter prompt focused on P&C risk drivers; no knowledge base tool is attached.
+
+- Score (`cdk/lambda-functions/score/index.py`)
+  - Life: Uses the knowledge base (`kb_search`) plus a `calculator` tool to compute sub‑totals and a final total, explaining reasons with references to manual content.
+  - P&C: Uses a P&C scoring prompt with only the `calculator` tool; no knowledge base tool is available.
+
+- Classify (`cdk/lambda-functions/classify/index.py`)
+  - Uses an insurance‑type specific classification prompt for Life vs P&C document types.
+
+- Chat (`cdk/lambda-functions/chat/index.py`)
+  - Tailors guidance and sample tools by insurance type (e.g., Life: `calculate_mortality_risk`; P&C: `calculate_property_premium`).
+
+## Flag flow (Life/P&C)
+
+1. Frontend sends `insuranceType` with upload.
+2. API stores `insuranceType` on the job record in DynamoDB.
+3. Downstream lambdas read `insuranceType` and adapt prompts/tools accordingly (KB only in Life).
 
 # 🚀 Deployment
 

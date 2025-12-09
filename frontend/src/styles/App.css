@@ -998,3 +998,111 @@ html, body {
     transform: scale(1);
   }
 } 
+
+/* Manual Page */
+.mp-container {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+}
+.mp-sidebar {
+  width: 320px;
+  flex: 0 0 320px;
+  border-right: 1px solid #e2e8f0;
+}
+.mp-sidebar-inner {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding-right: 12px;
+}
+.mp-dir {
+  font-weight: 700;
+  cursor: pointer;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1e40af;
+}
+.mp-children {
+  margin-left: 16px;
+}
+.mp-leaf {
+  margin: 6px 0;
+}
+.mp-leaf a {
+  text-decoration: none;
+  color: #334155;
+}
+.mp-leaf.active a {
+  color: #2563eb;
+  font-weight: 600;
+}
+.mp-caret {
+  width: 16px;
+  display: inline-block;
+}
+.mp-content {
+  flex: 1 1 auto;
+  max-width: 100%;
+  padding: 8px 0;
+}
+.mp-error {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.mp-article {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  animation: fadeIn 0.8s ease-out;
+}
+
+.mp-article h1, .mp-article h2, .mp-article h3 {
+  color: #1e40af;
+}
+
+.mp-article h1 {
+  font-size: 1.75rem;
+}
+
+.mp-article h2 {
+  font-size: 1.35rem;
+}
+
+.mp-article h3 {
+  font-size: 1.15rem;
+}
+
+.mp-article p {
+  color: #334155;
+  line-height: 1.7;
+}
+
+.mp-article a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.mp-article a:hover {
+  text-decoration: underline;
+}
+
+.mp-article ul, .mp-article ol {
+  color: #1f2937;
+}
+
+.mp-article code, .mp-article pre {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+}

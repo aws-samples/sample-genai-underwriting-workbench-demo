@@ -21,7 +21,7 @@ bedrock_runtime = boto3.client(service_name='bedrock-runtime', config=bedrock_re
 
 # Environment variables
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
-BEDROCK_CHAT_MODEL_ID = os.environ.get('BEDROCK_CHAT_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
+BEDROCK_CHAT_MODEL_ID = os.environ.get('BEDROCK_CHAT_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")

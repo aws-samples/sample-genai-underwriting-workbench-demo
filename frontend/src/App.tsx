@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom'
+import ManualPage from './components/ManualPage'
 import './styles/App.css'
 import { JobPage } from './components/JobPage'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -233,6 +234,16 @@ function UploadPage() {
               <span>P&C</span>
             </label>
           </div>
+          {insuranceType === 'life' && (
+            <button
+              type="button"
+              onClick={() => navigate('/manual')}
+              className="nav-button"
+            >
+              <FontAwesomeIcon icon={faStethoscope} style={{ marginRight: '8px' }} />
+              Underwriting Manual
+            </button>
+          )}
           <button
             type="button"
             onClick={() => navigate('/jobs')}
@@ -252,8 +263,8 @@ function UploadPage() {
         </h2>
         <p className="intro-text">
           {insuranceType === 'life' 
-            ? <span>TestTransform complex life insurance applications and medical documents into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude 3.7 Sonnet</strong>. Purpose-built for life insurance underwriters to automatically extract, analyze, and evaluate risk factors from application packets.</span>
-            : <span>TestTransform complex property & casualty insurance applications and ACORD forms into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude 3.7 Sonnet</strong>. Purpose-built for P&C insurance underwriters to automatically extract, analyze, and evaluate property risk factors from application packets.</span>}
+            ? <span>TestTransform complex life insurance applications and medical documents into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for life insurance underwriters to automatically extract, analyze, and evaluate risk factors from application packets.</span>
+            : <span>TestTransform complex property & casualty insurance applications and ACORD forms into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for P&C insurance underwriters to automatically extract, analyze, and evaluate property risk factors from application packets.</span>}
         </p>
         
         <div className="features-grid">
@@ -597,6 +608,10 @@ function JobsList() {
           <button onClick={() => navigate('/')} className="nav-button">
             <FontAwesomeIcon icon={faFileMedical} /> Upload New
           </button>
+          <button onClick={() => navigate('/manual')} className="nav-button">
+            <FontAwesomeIcon icon={faStethoscope} style={{ marginRight: '8px' }} />
+            Underwriting Manual
+          </button>
         </div>
       </div>
 
@@ -733,9 +748,15 @@ function App() {
         <Route path="/jobs/:jobId" element={
           <JobPageWrapper />
         } />
+        <Route path="/manual/*" element={<ManualPage />} />
+        <Route 
+          path="/:section(1-foundations|2-non-medical-factors|3-medical-impairments|4-evidence-screening|5-appendices)/*" 
+          element={<ManualPage />} 
+        />
       </Routes>
     </Router>
   )
 }
 
 export default App
+git

@@ -13,6 +13,8 @@ stepfunctions = boto3.client('stepfunctions')
 DOCUMENT_BUCKET = os.environ.get('DOCUMENT_BUCKET')
 STATE_MACHINE_ARN = os.environ.get('STATE_MACHINE_ARN')
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
+KB_SOURCE_BUCKET = os.environ.get('KB_SOURCE_BUCKET')
+
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
@@ -21,6 +23,7 @@ def lambda_handler(event, context):
     http_method = event.get('httpMethod', '')
     resource = event.get('resource', '')
     path_parameters = event.get('pathParameters', {}) or {}
+    query_params = event.get('queryStringParameters') or {}
     
     # Set CORS headers for all responses
     headers = {
@@ -101,6 +104,26 @@ def lambda_handler(event, context):
                 'body': json.dumps(response)
             }
             
+        elif http_method == 'GET' and resource == '/api/policy':
+            # Return presigned URL for markdown by key
+            s3_key = query_params.get('key') if isinstance(query_params, dict) else None
+            if not s3_key:
+                return {
+                    'statusCode': 400,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'Missing key parameter'})
+                }
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': KB_SOURCE_BUCKET, 'Key': s3_key},
+                ExpiresIn=900
+            )
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'url': url})
+            }
+            
         else:
             return {
                 'statusCode': 404,
@@ -115,6 +138,7 @@ def lambda_handler(event, context):
             'headers': headers,
             'body': json.dumps({'error': f'Internal server error: {str(e)}'})
         }
+
 
 def list_jobs():
     """List all jobs from DynamoDB, sorted newest first."""
@@ -162,6 +186,7 @@ def list_jobs():
         print(f"Error listing jobs: {str(e)}")
         raise
         
+
 def get_job(job_id):
     """Get a specific job by ID from DynamoDB"""
     try:
@@ -201,6 +226,22 @@ def get_job(job_id):
                 job['analysisOutput'] = analysis_output
             except:
                 job['analysisOutput'] = {}
+
+        # Add detection output if available
+        if 'analysisDetectionJsonStr' in item:
+            try:
+                detection_output = json.loads(item['analysisDetectionJsonStr']['S'])
+                job['analysisDetection'] = detection_output
+            except:
+                job['analysisDetection'] = {}
+
+        # Add scoring output if available
+        if 'analysisScoringJsonStr' in item:
+            try:
+                scoring_output = json.loads(item['analysisScoringJsonStr']['S'])
+                job['analysisScoring'] = scoring_output
+            except:
+                job['analysisScoring'] = {}
         
         # Add agent action output if available
         if 'agentActionOutputJsonStr' in item:
@@ -215,6 +256,7 @@ def get_job(job_id):
     except Exception as e:
         print(f"Error getting job {job_id}: {str(e)}")
         raise
+
 
 def get_document_presigned_url(job_id):
     """Generate a presigned URL for a document associated with a job"""
@@ -250,6 +292,7 @@ def get_document_presigned_url(job_id):
     except Exception as e:
         print(f"Error generating presigned URL for job {job_id}: {str(e)}")
         raise
+
 
 def generate_upload_url(event):
     """Generate a presigned URL for document upload and create initial job record"""
@@ -312,6 +355,7 @@ def generate_upload_url(event):
     except Exception as e:
         print(f"Error generating upload URL: {str(e)}")
         raise
+
 
 def generate_batch_upload_urls(event):
     """Generate presigned URLs for multiple document uploads"""

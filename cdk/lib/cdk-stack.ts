@@ -14,14 +14,294 @@ import * as stepfunctionsTasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
-import { NagSuppressions } from 'cdk-nag';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
+import * as opensearchserverless from 'aws-cdk-lib/aws-opensearchserverless';
+import * as cr from 'aws-cdk-lib/custom-resources';
+import * as lambdaPython from '@aws-cdk/aws-lambda-python-alpha';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+    const collectionName = `uw-genai-collection`;
 
+    const knowledgeBaseSourceBucket = new s3.Bucket(this, 'KnowledgeBaseSourceBucket', {
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'kb-source']),
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      versioned: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
+    // Create an IAM role for the Knowledge Base
+    const knowledgeBaseRole = new iam.Role(this, 'KnowledgeBaseRole', {
+        assumedBy: new iam.CompositePrincipal(
+            new iam.ServicePrincipal('bedrock.amazonaws.com'),
+            new iam.ServicePrincipal('lambda.amazonaws.com')
+        ),
+        // Add necessary permissions to the role
+        managedPolicies: [
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+        ],
+    });
+
+    // Create an IAM role for the InitializeIndexLambda
+    const indexRole = new iam.Role(this, 'InitializeIndexLambdaRole', {
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+        ],
+    });
+
+    // Add permissions for OpenSearch Serverless and Bedrock
+    knowledgeBaseRole.addToPolicy(new iam.PolicyStatement({
+        actions: [
+            'aoss:*',
+            'bedrock:InvokeModel'
+        ],
+        resources: ['*'],
+    }));
+    knowledgeBaseRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['s3:GetObject', 's3:ListBucket'],
+      resources: [
+        knowledgeBaseSourceBucket.bucketArn,
+        knowledgeBaseSourceBucket.arnForObjects('*'),
+      ],
+    }));
+
+    // Create OpenSearch Serverless Access Policy
+    const ossAccessPolicy = new opensearchserverless.CfnAccessPolicy(this, 'OSSAccessPolicy', {
+        name: `uw-access-policy`,
+        type: 'data',
+        description: 'Access policy for Bedrock Knowledge Base collection',
+        policy: JSON.stringify([
+            {
+                Description: "Access for Bedrock Knowledge Base",
+                Rules: [
+                    {
+                        ResourceType: "index",
+                        Resource: ["index/" + collectionName + "/*"],
+                        Permission: ["aoss:*"]
+                    },
+                    {
+                        ResourceType: "collection",
+                        Resource: ["collection/" + collectionName],
+                        Permission: ["aoss:*"]
+                    }
+                ],
+                Principal: [knowledgeBaseRole.roleArn, indexRole.roleArn]
+            }
+        ])
+    });
+
+    // Create OpenSearch Serverless Network Policy
+    const ossNetworkPolicy = new opensearchserverless.CfnSecurityPolicy(this, 'OSSNetworkPolicy', {
+        name: `uw-network-policy`,
+        type: 'network',
+        policy: JSON.stringify( [{"Rules":[
+            {"ResourceType":"collection","Resource":["collection/" + collectionName]},
+            {"ResourceType":"dashboard","Resource":["collection/" + collectionName]}],"AllowFromPublic":true},
+        ]
+        )
+        }
+    );
+    
+    // Create OpenSearch Serverless Security Policy
+    const ossSecurityPolicy = new opensearchserverless.CfnSecurityPolicy(this, 'OSSSecurityPolicy', {
+        name: `uw-security-policy`,
+        type: 'encryption',
+        policy: JSON.stringify({
+            "Rules": [{"ResourceType": "collection", "Resource": ["collection/" + collectionName]}],
+            "AWSOwnedKey": true
+        })
+    });
+
+    // Create OpenSearch Serverless Collection
+    const ossCollection = new opensearchserverless.CfnCollection(this, 'MyCollection', {
+        name: collectionName,
+        type: 'VECTORSEARCH',
+    });
+
+    ossCollection.addDependency(ossSecurityPolicy);
+    ossNetworkPolicy.addDependency(ossCollection);
+    ossAccessPolicy.addDependency(ossCollection);
+
+    indexRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['aoss:*'],
+        resources: [ossCollection.attrArn],
+    }));
+
+    // Create a Lambda function to initialize the index
+    // const initializeIndexLambda = new lambda.Function(this, 'InitializeIndexLambda', {
+    //     runtime: lambda.Runtime.PYTHON_3_9,
+    //     handler: 'index.lambda_handler',
+    //     code: lambda.Code.fromAsset('lambda-functions/initialize-index'),
+    //     timeout: cdk.Duration.seconds(300),
+    //     environment: {
+    //         COLLECTION_ENDPOINT: ossCollection.attrCollectionEndpoint,
+    //     },
+    //     role: indexRole
+    // });
+    const initializeIndexLambda = new lambdaPython.PythonFunction(this, 'InitializeIndexLambda', {
+      entry: 'lambda-functions/initialize-index',
+      runtime: lambda.Runtime.PYTHON_3_9,
+      index: 'index.py',
+      handler: 'lambda_handler',
+      timeout: cdk.Duration.seconds(300),
+      environment: {
+          COLLECTION_ENDPOINT: ossCollection.attrCollectionEndpoint,
+      },
+      role: indexRole
+  });
+
+    // Create a provider for the initialize index custom resource
+    const initializeIndexProvider = new cr.Provider(this, 'InitializeIndexProvider', {
+        onEventHandler: initializeIndexLambda,
+        logRetention: logs.RetentionDays.ONE_DAY,
+    });
+
+    // Create the OSS Index Custom Resource
+    const ossIndexResource = new cdk.CustomResource(this, 'CreateIndexResource', {
+        serviceToken: initializeIndexProvider.serviceToken,
+        properties: {
+            CollectionEndpoint: ossCollection.attrCollectionEndpoint,
+        },
+    });
+
+    ossIndexResource.node.addDependency(ossAccessPolicy);
+    ossIndexResource.node.addDependency(ossNetworkPolicy);
+    ossIndexResource.node.addDependency(ossSecurityPolicy);
+
+
+    // Create the Knowledge Base
+    const knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'MyKnowledgeBase', {
+        name: `uw-knowledge-base`,
+        roleArn: knowledgeBaseRole.roleArn,
+        
+        knowledgeBaseConfiguration: {
+            type: 'VECTOR',
+            vectorKnowledgeBaseConfiguration: {
+                embeddingModelArn: 'arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1',
+            },
+        },
+        storageConfiguration: {
+            type: 'OPENSEARCH_SERVERLESS',
+            opensearchServerlessConfiguration: {
+                collectionArn: ossCollection.attrArn,
+                fieldMapping: {
+                    metadataField: 'metadata',
+                    textField: 'text',
+                    vectorField: 'vector_field'
+                },
+                vectorIndexName: 'my_vector_index'
+            },
+        },
+        description: 'Bedrock Knowledge Base',
+    });
+    knowledgeBase.node.addDependency(ossIndexResource);
+
+    // Create a new role for the Lambda function
+    const dataSourceLambdaRole = new iam.Role(this, 'DataSourceLambdaRole', {
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+        ]
+    });
+
+    // Add permissions for Bedrock operations
+    dataSourceLambdaRole.addToPolicy(new iam.PolicyStatement({
+        actions: [
+            'bedrock:CreateDataSource',
+            'bedrock:DeleteDataSource',
+            'bedrock:ListDataSources',
+            'bedrock:GetDataSource',
+            'bedrock:UpdateDataSource'
+        ],
+        resources: ['*'],
+    }));
+
+    // Add permissions for passing the role to Bedrock
+    dataSourceLambdaRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['iam:PassRole'],
+        resources: [knowledgeBaseRole.roleArn],
+    }));
+
+    // Create Bedrock Knowledge Base Custom ResourceLambda
+    const datasourceLambda = new lambda.Function(this, 'DataSourceLambda', {
+        runtime: lambda.Runtime.PYTHON_3_9,
+        handler: 'index.lambda_handler',
+        timeout: cdk.Duration.seconds(300),
+        code: lambda.Code.fromAsset('lambda-functions/create-datasource'),
+        role: dataSourceLambdaRole,
+        environment: {
+            KNOWLEDGE_BASE_ROLE_ARN: knowledgeBaseRole.roleArn,
+        },
+    });
+
+    // Create a provider for the data source custom resource
+    const dataSourceProvider = new cr.Provider(this, 'DataSourceProvider', {
+        onEventHandler: datasourceLambda,
+        logRetention: logs.RetentionDays.ONE_DAY,
+    });
+
+
+    // Create Data Source Custom Resource
+    const brDataSourceResource = new cdk.CustomResource(this, 'BRDataSourceResource', {
+        serviceToken: dataSourceProvider.serviceToken,
+        properties: {
+            knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+            bucketArn: knowledgeBaseSourceBucket.bucketArn,
+            prefix: 'manual/'
+        },
+    });
+
+    // Create a new role for the Ingestion Job Lambda function
+    const ingestionJobLambdaRole = new iam.Role(this, 'IngestionJobLambdaRole', {
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+        ]
+    });
+
+    // Add permissions for Bedrock operations
+    ingestionJobLambdaRole.addToPolicy(new iam.PolicyStatement({
+        actions: [
+            'bedrock:StartIngestionJob',
+            'bedrock:GetIngestionJob',
+            'bedrock:ListIngestionJobs'
+        ],
+        resources: ['*'],
+    }));
+
+    // Create Ingestion Job Lambda
+    const ingestionJobLambda = new lambda.Function(this, 'IngestionJobLambda', {
+        runtime: lambda.Runtime.PYTHON_3_9,
+        timeout: cdk.Duration.seconds(300),
+        handler: 'index.lambda_handler',
+        code: lambda.Code.fromAsset('lambda-functions/start-ingestion-job'),
+        role: ingestionJobLambdaRole,
+    });
+
+    // Create a provider for the ingestion job custom resource
+    const ingestionJobProvider = new cr.Provider(this, 'IngestionJobProvider', {
+        onEventHandler: ingestionJobLambda,
+        logRetention: logs.RetentionDays.ONE_DAY,
+    });
+
+    // Create Ingestion Job Custom Resource
+    const brIngestionJobResource = new cdk.CustomResource(this, 'BRIngestionJobResource', {
+        serviceToken: ingestionJobProvider.serviceToken,
+        properties: {
+            knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+            dataSourceId: brDataSourceResource.getAtt('dataSourceId')
+        },
+    });
+
+    brIngestionJobResource.node.addDependency(brDataSourceResource);
+
+    
     // Create DynamoDB table with updated schema for Lambda architecture
     const jobsTable = new dynamodb.Table(this, 'JobsTable', {
       partitionKey: { name: 'jobId', type: dynamodb.AttributeType.STRING },
@@ -99,6 +379,18 @@ export class CdkStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // (moved earlier) knowledgeBaseSourceBucket
+
+    // Create S3 bucket for analysis traces
+    const analysisTracesBucket = new s3.Bucket(this, 'AnalysisTracesBucket', {
+      bucketName: cdk.Fn.join('-', ['ai-underwriting', cdk.Aws.ACCOUNT_ID, 'analysis-traces']),
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      versioned: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
     // Create Lambda Layers
     const pillowLayer = new lambda.LayerVersion(this, 'PillowLayer', {
       code: lambda.Code.fromAsset('lambda-layers/pillow-py312.zip'),
@@ -135,6 +427,15 @@ export class CdkStack extends cdk.Stack {
       ],
     });
 
+    const bedrockKbRetrievePolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: ['*'],
+      actions: [
+        'bedrock:Retrieve',
+        // 'bedrock:RetrieveAndGenerate' // keep commented unless needed
+      ],
+    });
+
     const dynamodbPolicyStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       resources: [
@@ -161,7 +462,11 @@ export class CdkStack extends cdk.Stack {
         extractionBucket.arnForObjects('*'),
         extractionBucket.bucketArn,
         mockOutputBucket.arnForObjects('*'),
-        mockOutputBucket.bucketArn
+        mockOutputBucket.bucketArn,
+        knowledgeBaseSourceBucket.arnForObjects('*'),
+        knowledgeBaseSourceBucket.bucketArn,
+        analysisTracesBucket.arnForObjects('*'),
+        analysisTracesBucket.bucketArn
       ],
       actions: [
         's3:PutObject',
@@ -185,6 +490,7 @@ export class CdkStack extends cdk.Stack {
         DOCUMENT_BUCKET: documentBucket.bucketName,
         EXTRACTION_BUCKET: extractionBucket.bucketName,
         JOBS_TABLE_NAME: jobsTable.tableName,
+        KB_SOURCE_BUCKET: knowledgeBaseSourceBucket.bucketName,
         // STATE_MACHINE_ARN will be added later
       },
       layers: [boto3Layer],
@@ -199,7 +505,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(3),
       memorySize: 1024,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [pdfProcessingLayer, boto3Layer],
@@ -228,7 +534,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(10),
       memorySize: 2048,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         MAX_PAGES_FOR_EXTRACTION: '5',
         EXTRACTION_BUCKET: extractionBucket.bucketName
@@ -246,11 +552,14 @@ export class CdkStack extends cdk.Stack {
       ephemeralStorageSize: cdk.Size.gibibytes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
-        EXTRACTION_BUCKET: extractionBucket.bucketName
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
+        KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+        DETECTION_TOP_K: '3',
+        TRACE_BUCKET: analysisTracesBucket.bucketName
       },
-      layers: [boto3Layer],
+      layers: [strandsSDKLayer, boto3Layer],
     });
 
     // 6. Act Lambda
@@ -268,7 +577,25 @@ export class CdkStack extends cdk.Stack {
       layers: [strandsSDKLayer, boto3Layer],
     });
 
-    // 7. Chat Lambda
+    // 7. Score Lambda (new)
+    const scoreLambda = new lambda.Function(this, 'ScoreLambda', {
+      functionName: 'ai-underwriting-score',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/score'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        BEDROCK_SCORING_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        JOBS_TABLE_NAME: jobsTable.tableName,
+        KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+        SCORING_TOP_K: '5',
+        TRACE_BUCKET: analysisTracesBucket.bucketName,
+      },
+      layers: [strandsSDKLayer, boto3Layer],
+    });
+
+    // 8. Chat Lambda
     const chatLambda = new lambda.Function(this, 'ChatLambda', {
       functionName: 'ai-underwriting-chat',
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -277,7 +604,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_CHAT_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_CHAT_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [boto3Layer],
@@ -300,12 +627,18 @@ export class CdkStack extends cdk.Stack {
     bedrockExtractLambda.addToRolePolicy(s3PolicyStatement);
 
     analyzeLambda.addToRolePolicy(bedrockPolicyStatement);
+    analyzeLambda.addToRolePolicy(bedrockKbRetrievePolicy);
     analyzeLambda.addToRolePolicy(dynamodbPolicyStatement);
     analyzeLambda.addToRolePolicy(s3PolicyStatement);
 
     actLambda.addToRolePolicy(bedrockPolicyStatement);
     actLambda.addToRolePolicy(dynamodbPolicyStatement);
     actLambda.addToRolePolicy(s3PolicyStatement);
+
+    scoreLambda.addToRolePolicy(bedrockPolicyStatement);
+    scoreLambda.addToRolePolicy(bedrockKbRetrievePolicy);
+    scoreLambda.addToRolePolicy(dynamodbPolicyStatement);
+    scoreLambda.addToRolePolicy(s3PolicyStatement);
 
     chatLambda.addToRolePolicy(bedrockPolicyStatement);
     chatLambda.addToRolePolicy(dynamodbPolicyStatement);
@@ -334,8 +667,8 @@ export class CdkStack extends cdk.Stack {
     const parallelExtract = new stepfunctions.Map(this, 'ParallelExtraction', {
       itemsPath: '$.batches.batchRanges',
       resultPath: '$.extractionResults',
-      maxConcurrency: 1,  // Set to 1 for Bedrock quota handling when processing multiple files
-      itemSelector: {
+      maxConcurrency: 4,
+      parameters: {
         'detail.$': '$.detail',
         'classification.$': '$.classification',
         'pages.$': '$$.Map.Item.Value',
@@ -356,7 +689,18 @@ export class CdkStack extends cdk.Stack {
 
     const analyzeStep = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeData', {
       lambdaFunction: analyzeLambda,
-      resultPath: '$.analysis',
+      payloadResponseOnly: true,
+      // Pass through the full analyze Lambda response without reshaping
+      resultPath: '$.analysisDetection',
+    });
+
+    const scoreStep = new stepfunctionsTasks.LambdaInvoke(this, 'ScoreImpairments', {
+      lambdaFunction: scoreLambda,
+      payload: stepfunctions.TaskInput.fromObject({
+        'classification.$': '$.classification',
+        'analysisDetection.$': '$.analysisDetection'
+      }),
+      resultPath: '$.scoring',
       payloadResponseOnly: true,
     });
 
@@ -369,6 +713,7 @@ export class CdkStack extends cdk.Stack {
       .next(generateBatchesStep)
       .next(parallelExtract)
       .next(analyzeStep)
+      .next(scoreStep)
       .next(actStep);
       
     // Create a log group for the state machine
@@ -379,7 +724,7 @@ export class CdkStack extends cdk.Stack {
     
     const stateMachine = new stepfunctions.StateMachine(this, 'DocumentProcessingWorkflow', {
       stateMachineName: 'ai-underwriting-workflow',
-      definitionBody: stepfunctions.DefinitionBody.fromChainable(classifyStep),
+      definition: classifyStep,
       timeout: cdk.Duration.minutes(60),
       // Add logging configuration
       logs: {
@@ -445,12 +790,6 @@ export class CdkStack extends cdk.Stack {
       cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn,
     });
 
-    // Add suppression for API Gateway CloudWatch role using AWS managed policy
-    NagSuppressions.addResourceSuppressions(apiGatewayCloudWatchRole, [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'API Gateway requires AWS managed policy for CloudWatch Logs access.',
-    }]);
-
     // Create API Gateway
     const api = new apigateway.RestApi(this, 'UnderwritingApi', {
       restApiName: 'ai-underwriting-api',
@@ -489,6 +828,7 @@ export class CdkStack extends cdk.Stack {
     // Chat resources
     const chatResource = apiResource.addResource('chat');
     const chatByJobIdResource = chatResource.addResource('{jobId}');
+    const policyResource = apiResource.addResource('policy');
 
     // Add methods to resources
     const apiHandlerIntegration = new apigateway.LambdaIntegration(apiHandlerLambda);
@@ -502,6 +842,7 @@ export class CdkStack extends cdk.Stack {
     batchUploadResource.addMethod('POST', apiHandlerIntegration);
     statusResource.addMethod('GET', apiHandlerIntegration);
     chatByJobIdResource.addMethod('POST', chatLambdaIntegration);
+    policyResource.addMethod('GET', apiHandlerIntegration);
 
     // Create S3 bucket for frontend
     const websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
@@ -560,7 +901,7 @@ export class CdkStack extends cdk.Stack {
     // Create CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
+        origin: new origins.S3Origin(websiteBucket, {
           originAccessIdentity,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -578,7 +919,7 @@ export class CdkStack extends cdk.Stack {
       errorResponses: [
         {
           httpStatus: 404,
-          responseHttpStatus: 200,
+          responseHttpStatus: 404,
           responsePagePath: '/index.html',
         },
       ],
@@ -591,10 +932,18 @@ export class CdkStack extends cdk.Stack {
           command: [
             '/bin/sh',
             '-c',
-            'npm install && npm run build && cp -r dist/. /asset-output/'
+            'npm ci --no-audit --no-fund && npm run build && cp -r dist/. /asset-output/'
           ],
           image: cdk.DockerImage.fromRegistry('node:20'),
           user: 'root',
+          // Mount the repo knowledge-base into the container so vite can read it at /knowledge-base
+          volumes: [
+            {
+              hostPath: path.join(__dirname, '../../knowledge-base'),
+              containerPath: '/knowledge-base',
+              consistency: cdk.DockerVolumeConsistency.DELEGATED,
+            },
+          ],
         },
       })],
       destinationBucket: websiteBucket,
@@ -602,312 +951,13 @@ export class CdkStack extends cdk.Stack {
       distributionPaths: ['/*'],
     });
 
-    // Add Nag Suppression for API Handler Lambda
-    // This is to suppress the warning for using wildcard permissions in development
-    // In production, this should be restricted to specific resources
-    NagSuppressions.addResourceSuppressions(apiHandlerLambda, [
-      {
-        id: 'AwsSolutions-IAM5',
-        reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
-      },
-    ]);
-
-    // Add Nag Suppression for Amazon S3 Buckets
-    NagSuppressions.addResourceSuppressions(documentBucket, [{
-      id: 'AwsSolutions-S3-1',
-      reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
-    },{
-      id: 'AwsSolutions-S1',
-      reason: 'S3 bucket server access logging is not enabled for development. Will be enabled in production.',
-    },{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressions(mockOutputBucket, [{
-      id: 'AwsSolutions-S3-1',
-      reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
-    },{
-      id: 'AwsSolutions-S1',
-      reason: 'S3 bucket server access logging is not enabled for development. Will be enabled in production.',
-    },{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressions(extractionBucket, [{
-      id: 'AwsSolutions-S3-1',
-      reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
-    },{
-      id: 'AwsSolutions-S1',
-      reason: 'S3 bucket server access logging is not enabled for development. Will be enabled in production.',
-    },{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressions(websiteBucket, [{
-      id: 'AwsSolutions-S3-1',
-      reason: 'Using wildcard for simplicity in development. Will be restricted in production.',
-    },{
-      id: 'AwsSolutions-S1',
-      reason: 'S3 bucket server access logging is not enabled for development. Will be enabled in production.',
-    },{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket or bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    
-    // Add specific suppression for DocumentBucket Policy Resource
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentBucket/Policy/Resource', [{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ExtractionBucket/Policy/Resource', [{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/MockOutputBucket/Policy/Resource', [{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/WebsiteBucket/Policy/Resource', [{
-      id: 'AwsSolutions-S10',
-      reason: 'S3 bucket policy does not require SSL requests. This is for development purposes. Will be enforced in production.',
-    }]);
-
-    // Add Nag Suppression for DynamoDB Table
-    NagSuppressions.addResourceSuppressions(jobsTable, [{
-      id: 'AwsSolutions-DDB1',
-      reason: 'Using default partition key for simplicity in development. Will be updated in production.',
-    },{
-      id: 'AwsSolutions-DDB2',
-      reason: 'DynamoDB table does not have point-in-time recovery enabled for development. Will be enabled in production.',
-    },{
-      id: 'AwsSolutions-DDB3',
-      reason: 'DynamoDB table does not have point-in-time recovery enabled for development. Will be enabled in production.',
-    }]);
-
-    // Add Nag Suppression for BucketNotificationsHandler (CDK-generated resource)
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'CDK-generated BucketNotificationsHandler uses AWS managed policy for Lambda basic execution. This is acceptable for the notification handler.',
-    }]);
-
-    // Add Nag Suppression for BucketNotificationsHandler DefaultPolicy
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'CDK-generated BucketNotificationsHandler uses wildcard permissions for S3 notifications. This is a CDK implementation detail that cannot be modified.',
-    }]);
-
-    // Add suppression for Lambda using AWS managed policy
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ApiHandlerLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }, ]);
-
-    // Add suppression for ApiHandlerLambda DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ApiHandlerLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to DynamoDB table indexes. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for ApiHandlerLambda DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ApiHandlerLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-    }]);
-
-    // Keep only this one with the more comprehensive reason
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ApiHandlerLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for Lambda functions not using latest runtime
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ApiHandlerLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ClassifyLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BedrockExtractLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/AnalyzeLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ActLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ChatLambda/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/Resource', [
-      {
-        id: 'AwsSolutions-L1',
-        reason: 'Using Python 3.12 which is the latest available runtime for this project.',
-      },
-    ]);
-
-    // Add suppression for Lambda functions using AWS managed policy
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ClassifyLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BedrockExtractLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/AnalyzeLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ActLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ChatLambda/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/ServiceRole/Resource', [
-      {
-        id: 'AwsSolutions-IAM4',
-        reason: 'Lambda requires basic execution role for CloudWatch Logs access. This is acceptable for this demo.',
-      },
-    ]);
-
-
-    // Add suppression for Lambda function DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ClassifyLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to Bedrock, DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BedrockExtractLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to Bedrock, DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/AnalyzeLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to Bedrock and DynamoDB table indexes. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ActLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to Bedrock, DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/ChatLambda/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Lambda needs access to Bedrock and DynamoDB table indexes. This is acceptable for this demo.',
-    }]);
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/BatchGeneratorLambda/ServiceRole/DefaultPolicy/Resource', [
-      {
-        id: 'AwsSolutions-IAM5',
-        reason: 'Lambda needs access to Bedrock, DynamoDB table indexes and S3 bucket objects. This is acceptable for this demo.',
-      },
-    ]);
-
-    // Add suppression for Step Function Role DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentProcessingWorkflow/Role/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Step Function needs to invoke Lambda functions. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for API Gateway warnings
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/UnderwritingApi/Resource', [{
-      id: 'AwsSolutions-APIG2',
-      reason: 'Request validation is not needed for this demo application.',
-    }]);
-
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/UnderwritingApi/DeploymentStage.prod/Resource', [{
-      id: 'AwsSolutions-APIG1',
-      reason: 'Access logging is already enabled through CloudWatch logs.',
-    }]);
-
-    // Add suppression for Step Function Role DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentProcessingWorkflow/Role/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Step Function needs to invoke Lambda functions. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for API Gateway warnings
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/UnderwritingApi/Resource', [{
-      id: 'AwsSolutions-APIG2',
-      reason: 'Request validation is not needed for this demo application.',
-    }]);
-
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/UnderwritingApi/DeploymentStage.prod/Resource', [{
-      id: 'AwsSolutions-APIG1',
-      reason: 'Access logging is already enabled through CloudWatch logs.',
-    }, {
-      id: 'AwsSolutions-APIG3',
-      reason: 'WAF is not required for this demo application.',
-    }]);
-
-    // Add suppression for API Gateway methods not using authorization
-    const apiMethodPaths = [
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/upload/POST/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/batch-upload/POST/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/documents/status/{executionArn}/GET/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/{jobId}/document-url/GET/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/{jobId}/GET/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/jobs/GET/Resource',
-      '/AWS-GENAI-UW-DEMO/UnderwritingApi/Default/api/chat/{jobId}/POST/Resource'
-    ];
-
-    apiMethodPaths.forEach(path => {
-      NagSuppressions.addResourceSuppressionsByPath(this, path, [{
-        id: 'AwsSolutions-APIG4',
-        reason: 'API authorization is not implemented for this demo application.',
-      }, {
-        id: 'AwsSolutions-COG4',
-        reason: 'Cognito user pool is not used for this demo application.',
-      }]);
+    // Deploy Knowledge Base source markdown to S3 (prefix manual/)
+    new s3deploy.BucketDeployment(this, 'DeployKnowledgeBaseSource', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, '../../knowledge-base'))],
+      destinationBucket: knowledgeBaseSourceBucket,
+      destinationKeyPrefix: 'manual',
     });
 
-    // Add suppression for Step Function Role DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/DocumentProcessingWorkflow/Role/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'Step Function needs to invoke Lambda functions. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for CloudFront distribution warnings
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/Distribution/Resource', [{
-      id: 'AwsSolutions-CFR1',
-      reason: 'Geo restrictions are not required for this demo application.',
-    }, {
-      id: 'AwsSolutions-CFR2',
-      reason: 'WAF integration is not required for this demo application.',
-    }, {
-      id: 'AwsSolutions-CFR3',
-      reason: 'Access logging is not enabled for development. Will be enabled in production.',
-    }, {
-      id: 'AwsSolutions-CFR4',
-      reason: 'TLS version configuration is acceptable for this demo application.',
-    }, {
-      id: 'AwsSolutions-CFR7',
-      reason: 'Using Origin Access Identity instead of Origin Access Control for this demo application.',
-    }]);
-
-    // Add suppression for CDK Bucket Deployment Lambda role
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource', [{
-      id: 'AwsSolutions-IAM4',
-      reason: 'CDK-generated BucketDeployment Lambda uses AWS managed policy for Lambda basic execution. This is acceptable for this demo.',
-    }]);
-
-    // Add suppression for CDK Bucket Deployment Lambda DefaultPolicy wildcard permissions
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource', [{
-      id: 'AwsSolutions-IAM5',
-      reason: 'CDK-generated BucketDeployment Lambda uses wildcard permissions for S3 operations. This is a CDK implementation detail that cannot be modified.',
-    }]);
-
-    // Add suppression for CDK Bucket Deployment Lambda runtime
-    NagSuppressions.addResourceSuppressionsByPath(this, '/AWS-GENAI-UW-DEMO/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource', [{
-      id: 'AwsSolutions-L1',
-      reason: 'CDK-generated BucketDeployment Lambda runtime is managed by CDK and cannot be modified.',
-    }]);
 
     // Output the CloudFront URL and other important resources
     new cdk.CfnOutput(this, 'FrontendURL', {
@@ -933,6 +983,21 @@ export class CdkStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'OutputBucketName', {
       value: mockOutputBucket.bucketName,
       description: 'S3 Bucket for agent action outputs',
+    });
+
+    new cdk.CfnOutput(this, 'KnowledgeBaseSourceBucketName', {
+      value: knowledgeBaseSourceBucket.bucketName,
+      description: 'S3 Bucket for Knowledge Base source markdown',
+    });
+
+    new cdk.CfnOutput(this, 'AnalysisTracesBucketName', {
+      value: analysisTracesBucket.bucketName,
+      description: 'S3 Bucket for analysis trace JSON',
+    });
+
+    new cdk.CfnOutput(this, 'KnowledgeBaseId', {
+      value: knowledgeBase.attrKnowledgeBaseId,
+      description: 'Bedrock Knowledge Base ID',
     });
 
     new cdk.CfnOutput(this, 'JobsTableName', {

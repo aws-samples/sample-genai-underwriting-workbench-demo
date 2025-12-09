@@ -227,7 +227,7 @@ def lambda_handler(event, context):
         if base64_image_data:
             try:
                 # Use Claude 3 Sonnet v2 by default, but can be configured via environment variable
-                model_id = os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
+                model_id = os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
                 
                 # Define the prompt for document classification based on insurance type
                 prompt_text = get_classification_prompt(insurance_type)
