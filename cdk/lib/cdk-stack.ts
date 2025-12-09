@@ -505,7 +505,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(3),
       memorySize: 1024,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [pdfProcessingLayer, boto3Layer],
@@ -534,7 +534,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(10),
       memorySize: 2048,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         MAX_PAGES_FOR_EXTRACTION: '5',
         EXTRACTION_BUCKET: extractionBucket.bucketName
@@ -552,7 +552,7 @@ export class CdkStack extends cdk.Stack {
       ephemeralStorageSize: cdk.Size.gibibytes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         EXTRACTION_BUCKET: extractionBucket.bucketName,
         KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
@@ -586,7 +586,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       environment: {
-        BEDROCK_SCORING_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_SCORING_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
         SCORING_TOP_K: '5',
@@ -604,7 +604,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_CHAT_MODEL_ID: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+        BEDROCK_CHAT_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [boto3Layer],

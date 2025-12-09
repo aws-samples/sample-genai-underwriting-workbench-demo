@@ -34,7 +34,7 @@ s3 = boto3.client('s3')
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
 KNOWLEDGE_BASE_ID = os.environ.get('KNOWLEDGE_BASE_ID')
 TRACE_BUCKET = os.environ.get('TRACE_BUCKET')
-MODEL_ID = os.environ.get('BEDROCK_SCORING_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
+MODEL_ID = os.environ.get('BEDROCK_SCORING_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
 
 
 def _extract_job_id(event: dict) -> str | None:

@@ -77,7 +77,7 @@ def _build_agent(insurance_type: str) -> object:
     - life: use life underwriting prompt and Bedrock KB tool
     - property_casualty: use P&C underwriting prompt and DO NOT attach KB tool
     """
-    model_id = os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0')
+    model_id = os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
 
     @tool
     def scratch_fixed(action: str, key: str, value=None, agent=None):
