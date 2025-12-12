@@ -822,7 +822,53 @@ export function JobPage({ jobId }: JobPageProps) {
     );
   };
 
-  
+  const renderUnderwriterAnalysis = () => {
+    const localAnalysisData = analysisData;
+    if (!localAnalysisData?.underwriter_analysis) {
+      if (isLoadingJobDetails || currentPhase !== 'Complete') return <p>Loading underwriter analysis...</p>;
+      return <p>No underwriter analysis available.</p>;
+    }
+    
+    interface SectionConfigItem {
+      key: keyof UnderwriterAnalysis;
+      icon: any;
+      title: string;
+    }
+
+    const sectionConfig: SectionConfigItem[] = localAnalysisData.insurance_type === 'property_casualty' 
+      ? [
+          { key: 'RISK_ASSESSMENT', icon: faClipboardCheck, title: 'Risk Assessment' }, 
+          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
+          { key: 'PROPERTY_ASSESSMENT', icon: faHome, title: 'Property Assessment' }, 
+          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
+        ]
+      : [
+          { key: 'RISK_ASSESSMENT', icon: faBriefcaseMedical, title: 'Risk Assessment' }, 
+          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
+          { key: 'MEDICAL_TIMELINE', icon: faHistory, title: 'Medical Timeline' }, 
+          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
+        ];
+    
+    return (
+      <div className="underwriter-analysis">
+        {sectionConfig.map((item) => {
+          const content = localAnalysisData.underwriter_analysis[item.key];
+          if (!content || content === "Not available.") return null;
+          if (item.key === 'MEDICAL_TIMELINE' && localAnalysisData.insurance_type !== 'life') return null;
+          if (item.key === 'PROPERTY_ASSESSMENT' && localAnalysisData.insurance_type !== 'property_casualty') return null;
+
+          return (
+            <div key={item.key} className="analysis-section">
+              <h3><FontAwesomeIcon icon={item.icon} /> {item.title}</h3>
+              <div className="analysis-content">
+                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{...customMarkdownComponentsFromStyles, a: ({href, children}) => (<PageReference pageNum={href?.replace("/page/","") || "1"} text={children as string}/>) }}>{content}</ReactMarkdown>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderDetection = () => {
     if (!detection) return <p>No detection results.</p>
@@ -1128,8 +1174,8 @@ export function JobPage({ jobId }: JobPageProps) {
             <div style={{ position: 'relative', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
               <Split 
                 className="split-view"
-                sizes={isAnalysisPanelOpen ? [50, 50] : [100, 0]}
-                minSize={isAnalysisPanelOpen ? [300,300] : [0,0] }
+                sizes={isAnalysisPanelOpen ? [40, 60] : [100, 0]}
+                minSize={isAnalysisPanelOpen ? [250, 400] : [0, 0] }
                 gutterSize={10}
                 direction="horizontal"
                 style={{ display: 'flex', flexGrow: 1, height: 'calc(100vh - 200px)' }}
@@ -1193,25 +1239,28 @@ export function JobPage({ jobId }: JobPageProps) {
                   <div className="tabs">
                     <button className={`tab-button ${activeTab === 'grouped' ? 'active' : ''}`} onClick={() => setActiveTab('grouped')}>
                       <FontAwesomeIcon icon={faList} /> Document Analysis
-            </button>
+                    </button>
+                    <button className={`tab-button ${activeTab === 'underwriter' ? 'active' : ''}`} onClick={() => setActiveTab('underwriter')}>
+                      <FontAwesomeIcon icon={faUserMd} /> Underwriter
+                    </button>
                     <button className={`tab-button ${activeTab === 'detection' ? 'active' : ''}`} onClick={() => setActiveTab('detection')}>
-                      <FontAwesomeIcon icon={faClipboardCheck} /> Impairment Detection Agent
-            </button>
-                    
+                      <FontAwesomeIcon icon={faClipboardCheck} /> Impairments
+                    </button>
                     <button className={`tab-button ${activeTab === 'scoring' ? 'active' : ''}`} onClick={() => setActiveTab('scoring')}>
-                      <FontAwesomeIcon icon={faCheckCircle} /> Scoring Agent
-            </button>
+                      <FontAwesomeIcon icon={faCheckCircle} /> Scoring
+                    </button>
                     <button className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-                      <FontAwesomeIcon icon={faComments} /> Chat Assistant
+                      <FontAwesomeIcon icon={faComments} /> Chat
                       {analysisData?.insurance_type && (
                         <span className={`chat-type-indicator ${analysisData.insurance_type === 'property_casualty' ? 'p-and-c' : 'life'}`}>
                           {analysisData.insurance_type === 'property_casualty' ? 'P&C' : 'Life'}
                         </span>
                       )}
-            </button>
+                    </button>
                   </div>
                   <div className="tab-content">
                     {activeTab === 'grouped' && renderGroupedAnalysis()}
+                    {activeTab === 'underwriter' && renderUnderwriterAnalysis()}
                     {activeTab === 'detection' && renderDetection()}
                     
                     {activeTab === 'scoring' && renderScoring()}

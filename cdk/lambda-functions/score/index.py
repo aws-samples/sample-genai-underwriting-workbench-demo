@@ -1,16 +1,24 @@
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 
 import boto3
 from botocore.config import Config
 
+def log_timing(operation_name, start_time):
+    """Log the duration of an operation"""
+    elapsed = time.time() - start_time
+    print(f"[TIMING] {operation_name} completed in {elapsed:.2f}s")
+
 # Strands Agent imports (layer provided by CDK)
 try:
     from strands import Agent, tool
+    from strands.models import BedrockModel
 except Exception:
     Agent = None  # type: ignore
+    BedrockModel = None  # type: ignore
     def tool(fn):  # type: ignore
         return fn
 
@@ -34,7 +42,7 @@ s3 = boto3.client('s3')
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
 KNOWLEDGE_BASE_ID = os.environ.get('KNOWLEDGE_BASE_ID')
 TRACE_BUCKET = os.environ.get('TRACE_BUCKET')
-MODEL_ID = os.environ.get('BEDROCK_SCORING_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
+MODEL_ID = os.environ.get('BEDROCK_SCORING_MODEL_ID', 'global.anthropic.claude-haiku-4-5-20251001-v1:0')
 
 
 def _extract_job_id(event: dict) -> str | None:
@@ -143,6 +151,10 @@ Once you have a `sub_total` for all impairments, create a final list containing 
 
 Finally, structure your entire response as a single JSON object. Do not include any other text or explanation outside of the final JSON block.
 
+Additional Guidance:
+- When a score is between two numbers, use the lower number.
+- If no suitable rating table is found, use a score of 0.
+
 Your output must be in this exact format:
 ```json
 {
@@ -181,19 +193,29 @@ Finally, return a single JSON object exactly like this:
 
 
 def _build_agent(insurance_type: str | None) -> object:
+    # Configure BedrockModel with adaptive retry
+    retrying_cfg = Config(
+        retries={"mode": "adaptive", "max_attempts": 12}
+    )
+    model = BedrockModel(
+        model_id=MODEL_ID,
+        boto_client_config=retrying_cfg
+    )
+    print(f"[_build_agent] Created BedrockModel with adaptive retry (max_attempts=12)")
+    
     itype = (insurance_type or '').lower()
     if itype == 'life':
         return Agent(
             system_prompt=LIFE_PROMPT,
             tools=[kb_search, calculator],
-            model=MODEL_ID,
+            model=model,
         )
     else:
         # property_casualty: exclude KB tool
         return Agent(
             system_prompt=PC_PROMPT,
             tools=[calculator],
-            model=MODEL_ID,
+            model=model,
         )
 
 
@@ -226,19 +248,52 @@ def _to_agent_message(payload: list[dict]) -> str:
 
 
 def _run_agent_scoring(payload: list[dict], insurance_type: str | None) -> dict:
+    agent_start = time.time()
+    print(f"[_run_agent_scoring] Building agent for insurance_type={insurance_type}")
     agent = _build_agent(insurance_type)
     message = _to_agent_message(payload)
-    res = agent(message)
+    print(f"[_run_agent_scoring] Agent input message size: {len(message)} bytes")
+    print(f"[_run_agent_scoring] Invoking Strands agent...")
+    invoke_start = time.time()
+    try:
+        res = agent(message)
+        log_timing("Strands scoring agent invocation", invoke_start)
+    except Exception as agent_error:
+        log_timing("Strands scoring agent invocation (FAILED)", invoke_start)
+        print(f"[_run_agent_scoring] ERROR: Strands agent invocation failed: {type(agent_error).__name__}: {agent_error}")
+        import traceback
+        traceback.print_exc()
+        # Check for specific Bedrock errors
+        if hasattr(agent_error, 'response'):
+            print(f"[_run_agent_scoring] Bedrock error response: {agent_error.response}")
+        raise
     res_str = str(res)
+    print(f"[_run_agent_scoring] Agent response size: {len(res_str)} bytes")
+    print(f"[_run_agent_scoring] Agent response preview (first 500 chars): {res_str[:500]}")
     # Extract fenced JSON if present
     fence = re.search(r"```json\s*(.*?)\s*```", res_str, re.DOTALL)
     if fence:
         res_str = fence.group(1)
+        print(f"[_run_agent_scoring] Extracted JSON from fenced code block")
     try:
-        return json.loads(res_str)
-    except Exception:
+        result = json.loads(res_str)
+        print(f"[_run_agent_scoring] Successfully parsed JSON, total_score={result.get('total_score')}, impairment_scores count={len(result.get('impairment_scores', []))}")
+        log_timing("Total agent scoring", agent_start)
+        return result
+    except Exception as e:
+        print(f"[_run_agent_scoring] Direct JSON parse failed: {e}, trying regex")
         obj = re.search(r"\{[\s\S]*\}", res_str)
-        return json.loads(obj.group(0)) if obj else {"total_score": 0, "impairment_scores": []}
+        if obj:
+            try:
+                result = json.loads(obj.group(0))
+                print(f"[_run_agent_scoring] Regex JSON parse succeeded")
+                log_timing("Total agent scoring", agent_start)
+                return result
+            except Exception as e2:
+                print(f"[_run_agent_scoring] ERROR: Regex JSON parse also failed: {e2}")
+        print(f"[_run_agent_scoring] ERROR: Could not parse agent response as JSON")
+        log_timing("Total agent scoring (FAILED)", agent_start)
+        return {"total_score": 0, "impairment_scores": []}
 
 
 def _write_trace(job_id: str, trace_obj: dict) -> str | None:
@@ -250,16 +305,23 @@ def _write_trace(job_id: str, trace_obj: dict) -> str | None:
 
 
 def lambda_handler(event, context):
+    handler_start = time.time()
+    print(f"[score] === SCORE LAMBDA START === remaining_time={context.get_remaining_time_in_millis()}ms")
     # Normalize event to dict if a JSON string is passed through
     if isinstance(event, str):
         try:
             event = json.loads(event)
-        except Exception:
-            pass
-    print('[score] Event:', json.dumps(event)[:2000])
+            print(f"[score] Parsed event from JSON string")
+        except Exception as e:
+            print(f"[score] WARNING: Could not parse event as JSON: {e}")
+    print(f"[score] Event keys: {list(event.keys()) if isinstance(event, dict) else 'not a dict'}")
+    print(f"[score] Event size: {len(json.dumps(event))} bytes")
+    print(f"[score] Event preview: {json.dumps(event)[:2000]}")
     job_id = _extract_job_id(event)
+    print(f"[score] Extracted job_id: {job_id}")
 
     # Mark status as SCORING at the start of this step
+    print(f"[score] Step 1: Updating status to SCORING, remaining_time={context.get_remaining_time_in_millis()}ms")
     if job_id and JOBS_TABLE_NAME:
         try:
             ts = datetime.now(timezone.utc).isoformat()
@@ -270,34 +332,54 @@ def lambda_handler(event, context):
                 ExpressionAttributeNames={'#s': 'status', '#t': 'scoringStartTimestamp'},
                 ExpressionAttributeValues={':s': {'S': 'SCORING'}, ':t': {'S': ts}}
             )
-        except Exception:
-            pass
+            print(f"[score] Updated status to SCORING for job {job_id}")
+        except Exception as e:
+            print(f"[score] WARNING: Failed to update status to SCORING: {e}")
 
     # Build payload for the scoring agent
+    print(f"[score] Step 2: Building impairments payload, remaining_time={context.get_remaining_time_in_millis()}ms")
     impairments_payload = _get_impairments_payload(event)
+    print(f"[score] Impairments payload count: {len(impairments_payload)}")
+    if impairments_payload:
+        print(f"[score] Impairments payload preview: {json.dumps(impairments_payload[:2])[:1000]}")
 
     # Determine insurance type from event or DynamoDB
+    print(f"[score] Step 3: Determining insurance type, remaining_time={context.get_remaining_time_in_millis()}ms")
     insurance_type: str | None = None
     try:
         classification = event.get('classification') if isinstance(event, dict) else None
         insurance_type = (classification or {}).get('insuranceType')
+        print(f"[score] Insurance type from event: {insurance_type}")
         if (not insurance_type) and job_id and JOBS_TABLE_NAME:
+            print(f"[score] Insurance type not in event, fetching from DynamoDB")
             resp = dynamodb.get_item(TableName=JOBS_TABLE_NAME, Key={'jobId': {'S': job_id}}, ProjectionExpression='insuranceType')
             item = resp.get('Item') or {}
             insurance_type = (item.get('insuranceType') or {}).get('S')
-    except Exception:
+            print(f"[score] Insurance type from DynamoDB: {insurance_type}")
+    except Exception as e:
+        print(f"[score] WARNING: Error getting insurance type: {e}")
         insurance_type = insurance_type or 'property_casualty'
+    print(f"[score] Final insurance_type: {insurance_type}")
 
     # Run the Strands scoring agent; preserve raw output
+    print(f"[score] Step 4: Running Strands scoring agent, remaining_time={context.get_remaining_time_in_millis()}ms")
     agent_raw: dict
+    agent_start = time.time()
     try:
         agent_raw = _run_agent_scoring(impairments_payload, insurance_type)
+        log_timing("Agent scoring", agent_start)
+        print(f"[score] Agent scoring completed, total_score={agent_raw.get('total_score')}")
     except Exception as e:
-        print('[score] Agent scoring error:', str(e))
+        log_timing("Agent scoring (FAILED)", agent_start)
+        print(f"[score] ERROR: Agent scoring error: {e}")
+        import traceback
+        traceback.print_exc()
         agent_raw = {"total_score": 0, "impairment_scores": []}
 
     # Write trace
+    print(f"[score] Step 5: Writing trace to S3, remaining_time={context.get_remaining_time_in_millis()}ms")
     safe_event_keys = list(event.keys()) if isinstance(event, dict) else []
+    trace_start = time.time()
     trace_key = _write_trace(job_id, {
         'eventKeys': safe_event_keys,
         'payloadCount': len(impairments_payload or []),
@@ -305,25 +387,39 @@ def lambda_handler(event, context):
     })
     if trace_key:
         agent_raw['traceS3Key'] = trace_key
+        log_timing("Write trace to S3", trace_start)
+        print(f"[score] Trace written to: {trace_key}")
 
     # Persist raw agent JSON to DynamoDB if job id present
+    print(f"[score] Step 6: Persisting scoring to DynamoDB, remaining_time={context.get_remaining_time_in_millis()}ms")
     if job_id and JOBS_TABLE_NAME:
+        ddb_start = time.time()
         try:
             ts = datetime.now(timezone.utc).isoformat()
+            scoring_json = json.dumps(agent_raw)
+            print(f"[score] Persisting analysisScoringJsonStr, size={len(scoring_json)} bytes")
             dynamodb.update_item(
                 TableName=JOBS_TABLE_NAME,
                 Key={'jobId': {'S': job_id}},
                 UpdateExpression='SET #as = :as, #st = :st',
                 ExpressionAttributeNames={'#as': 'analysisScoringJsonStr', '#st': 'scoringTimestamp'},
-                ExpressionAttributeValues={':as': {'S': json.dumps(agent_raw)}, ':st': {'S': ts}}
+                ExpressionAttributeValues={':as': {'S': scoring_json}, ':st': {'S': ts}}
             )
+            log_timing("DynamoDB persist scoring", ddb_start)
+            print(f"[score] Persisted analysisScoringJsonStr for job {job_id}")
         except Exception as e:
-            print('[score] DynamoDB update error:', str(e))
+            print(f"[score] ERROR: DynamoDB update error: {e}")
+            import traceback
+            traceback.print_exc()
 
-    return {
+    log_timing("Total SCORE lambda execution", handler_start)
+    print(f"[score] === SCORE LAMBDA COMPLETE === remaining_time={context.get_remaining_time_in_millis()}ms")
+    result = {
         'status': 'SUCCESS',
         'message': 'Scoring completed',
         'scoring': agent_raw
     }
+    print(f"[score] Returning result, size={len(json.dumps(result))} bytes")
+    return result
 
 
