@@ -1,0 +1,322 @@
+{
+  "common": {
+    "upload": "Hochladen",
+    "cancel": "Abbrechen",
+    "submit": "Absenden",
+    "loading": "Wird geladen...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "life": "Leben",
+    "propertyAndCasualty": "Sach",
+    "andMore": "Und Mehr",
+    "switchingLanguage": "Sprache wechseln...",
+    "selectLanguage": "Sprache auswählen",
+    "currentLanguage": "Aktuelle Sprache: {{language}}",
+    "availableLanguages": "Verfügbare Sprachen",
+    "selected": "Ausgewählt"
+  },
+  "header": {
+    "title": "GenAI Underwriting Workbench",
+    "uploadNew": "Neu Hochladen",
+    "viewAllJobs": "Alle Aufträge Anzeigen",
+    "underwritingManual": "Underwriting-Handbuch"
+  },
+  "upload": {
+    "title": "Dokumente Hochladen",
+    "selectFiles": "Klicken Sie, um Dateien auszuwählen",
+    "dragDrop": "oder ziehen Sie PDF-Dateien hierher",
+    "multipleFiles": "Sie können mehrere PDF-Dateien gleichzeitig auswählen",
+    "analyzing": "{{count}} Dokument Analysieren",
+    "analyzing_plural": "{{count}} Dokumente Analysieren",
+    "uploadSuccess": "Erfolgreich hochgeladen",
+    "uploadFailed": "Hochladen fehlgeschlagen: {{error}}",
+    "uploading": "Wird hochgeladen...",
+    "gettingUploadUrl": "Upload-URL wird abgerufen...",
+    "uploadingToS3": "Wird zu S3 hochgeladen...",
+    "gettingUploadUrls": "Upload-URLs werden abgerufen...",
+    "selectedFiles": "Ausgewählte Dateien ({{count}})",
+    "streamlineLife": "Optimieren Sie Ihr Lebensversicherungs-Underwriting",
+    "streamlinePropertyCasualty": "Optimieren Sie Ihr Sach- und Unfallversicherungs-Underwriting",
+    "introLife": "Verwandeln Sie komplexe Lebensversicherungsanträge und medizinische Dokumente in umsetzbare Erkenntnisse mithilfe fortschrittlicher KI-Analyse, die von <strong>Amazon Bedrock</strong> und <strong>Claude Haiku 4.5</strong> unterstützt wird. Speziell für Lebensversicherungs-Underwriter entwickelt, um Risikofaktoren aus Antragsunterlagen automatisch zu extrahieren, zu analysieren und zu bewerten.",
+    "introPropertyCasualty": "Verwandeln Sie komplexe Sach- und Unfallversicherungsanträge und ACORD-Formulare in umsetzbare Erkenntnisse mithilfe fortschrittlicher KI-Analyse, die von <strong>Amazon Bedrock</strong> und <strong>Claude Haiku 4.5</strong> unterstützt wird. Speziell für Sach- und Unfallversicherungs-Underwriter entwickelt, um Immobilienrisikofaktoren aus Antragsunterlagen automatisch zu extrahieren, zu analysieren und zu bewerten.",
+    "documentAnalysis": "Dokumentenanalyse",
+    "underwriterAnalysis": "Underwriter-Analyse",
+    "propertyAssessmentTitle": "Sachbewertung",
+    "interactiveAssistant": "Interaktiver Assistent",
+    "supportedDocuments": "Unterstützte Dokumente"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "Vollständige Lebensversicherungsantragsunterlagen verarbeiten",
+        "item2": "Krankengeschichte und Risikofaktoren extrahieren",
+        "item3": "Automatische Klassifizierung von APS und Laborberichten"
+      },
+      "underwriterAnalysis": {
+        "item1": "KI-gesteuerte Mortalitätsrisikobewertung",
+        "item2": "Erstellung einer Krankengeschichts-Zeitleiste",
+        "item3": "Querverweise auf Unstimmigkeiten zwischen Dokumenten",
+        "item4": "Automatische Bewertung medizinischer Zustände"
+      },
+      "interactiveAssistant": {
+        "item1": "Komplexe Krankengeschichten abfragen",
+        "item2": "Sofortiger Zugriff auf policenrelevante Details",
+        "item3": "Navigation durch mehrdokumentige Anträge"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "Vollständige Sach- und Unfallversicherungsantragsunterlagen verarbeiten",
+        "item2": "Immobiliendetails und Risikofaktoren extrahieren",
+        "item3": "Automatische Klassifizierung von ACORD-Formularen"
+      },
+      "propertyAssessment": {
+        "item1": "KI-gesteuerte Immobilienrisikobewertung",
+        "item2": "Detaillierte Analyse der Immobilienmerkmale",
+        "item3": "Querverweise auf Unstimmigkeiten zwischen Dokumenten",
+        "item4": "Umwelt- und geografische Risikobewertung"
+      },
+      "interactiveAssistant": {
+        "item1": "Immobiliendetails und Risikofaktoren abfragen",
+        "item2": "Sofortiger Zugriff auf policenrelevante Details",
+        "item3": "Navigation durch komplexe ACORD-Formulare"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "Lebensversicherungsanträge",
+      "aps": "Ärztliche Stellungnahmen (APS)",
+      "labReports": "Laborberichte",
+      "pharmacyRecords": "Apothekenunterlagen",
+      "financialDisclosures": "Finanzielle Offenlegungen",
+      "medicalQuestionnaires": "Krankengeschichts-Fragebögen",
+      "supplementalForms": "Ergänzende Formulare"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "ACORD-Formulare",
+      "propertyInspections": "Immobilieninspektionen",
+      "claimsHistory": "Schadenhistorie",
+      "propertyValuations": "Immobilienbewertungen",
+      "floodZoneCertificates": "Hochwasserzonen-Zertifikate",
+      "buildingCodeCompliance": "Bauvorschriften-Konformität",
+      "securityDocumentation": "Sicherheitsdokumentation"
+    }
+  },
+  "insuranceType": {
+    "life": "Lebensversicherung",
+    "propertyAndCasualty": "Sach- und Unfallversicherung",
+    "selectType": "Versicherungsart"
+  },
+  "jobs": {
+    "title": "Underwriting-Aufträge",
+    "noJobs": "Sie haben noch keine Dokumente hochgeladen.",
+    "uploadFirst": "Laden Sie Ihr Erstes Dokument Hoch",
+    "loading": "Aufträge werden geladen...",
+    "fetchError": "Fehler beim Abrufen der Aufträge",
+    "tryAgain": "Erneut Versuchen",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "Abgeschlossen",
+      "inProgress": "In Bearbeitung",
+      "failed": "Fehlgeschlagen"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "Risikobewertung",
+    "discrepancies": "Unstimmigkeiten",
+    "medicalTimeline": "Medizinische Zeitleiste",
+    "propertyAssessment": "Sachbewertung",
+    "finalRecommendation": "Endgültige Empfehlung"
+  },
+  "chat": {
+    "title": "Chat mit KI-Assistent",
+    "placeholder": "Stellen Sie eine Frage zu diesem Dokument...",
+    "send": "Senden",
+    "thinking": "Denkt nach..."
+  },
+  "errors": {
+    "pdfOnly": "Bitte wählen Sie nur PDF-Dateien aus. Ungültige Dateien: {{files}}",
+    "selectFile": "Bitte wählen Sie mindestens eine Datei aus",
+    "uploadFailed": "Hochladen fehlgeschlagen",
+    "unauthorized": "Nicht autorisiert: API-Zugriff verweigert",
+    "fetchFailed": "Fehler beim Abrufen der Daten",
+    "unauthorizedUploadUrl": "Nicht autorisiert: API-Zugriff für Upload-URL-Generierung verweigert.",
+    "failedUploadUrl": "Fehler beim Abrufen der Upload-URL.",
+    "invalidUploadResponse": "Ungültige Antwort vom Upload-URL-Generierungs-Endpunkt.",
+    "s3UploadFailed": "S3-Upload für {{filename}} fehlgeschlagen: {{error}}",
+    "unauthorizedBatchUpload": "Nicht autorisiert: API-Zugriff für Batch-Upload verweigert.",
+    "failedBatchUploadUrls": "Fehler beim Abrufen der Batch-Upload-URLs.",
+    "invalidBatchResponse": "Ungültige Antwort vom Batch-Upload-Endpunkt.",
+    "noUploadUrlForFile": "Keine Upload-URL für {{filename}} gefunden"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "Analysebericht Herunterladen",
+      "pdf": "PDF Herunterladen",
+      "generating": "Wird generiert..."
+    },
+    "loadingJobDetails": "Auftragsdetails Werden Geladen...",
+    "fetchingLatestInfo": "Neueste Informationen werden abgerufen...",
+    "errorOccurred": "Ein Fehler ist Aufgetreten",
+    "retry": "Erneut Versuchen",
+    "processingJob": "Auftrag {{jobId}} Wird Verarbeitet...",
+    "howItWorks": "Wie es Funktioniert",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "page": "Seite",
+    "of": "von",
+    "print": "PDF Drucken",
+    "refresh": "Daten Aktualisieren",
+    "hideAnalysis": "Analyse Ausblenden",
+    "showAnalysis": "Analyse Anzeigen",
+    "loadingDocument": "Dokument Wird Geladen...",
+    "pdfPlaceholder": "Das PDF-Dokument wird hier angezeigt, sobald die Analyse abgeschlossen ist.",
+    "loadingPdf": "PDF Wird Geladen...",
+    "errorLoadingPdf": "Fehler beim Laden des PDF.",
+    "tabs": {
+      "documentAnalysis": "Datenextraktion",
+      "documentAnalysis": "Dokumentenanalyse",
+      "impairmentDetection": "Agent zur Beeinträchtigungserkennung",
+      "scoring": "Bewertungsagent",
+      "chatAssistant": "Chat-Assistent"
+    },
+    "sections": {
+      "uwScore": "UW-Score",
+      "riskAssessment": "Risikobewertung",
+      "detectedImpairments": "Erkannte Beeinträchtigungen",
+      "discrepancies": "Abweichungen",
+      "medicalTimeline": "Medizinische Zeitleiste",
+      "propertyAssessment": "Immobilienbewertung",
+      "finalRecommendation": "Endgültige Empfehlung"
+    },
+    "toggle": {
+      "showRawData": "Dokumentenanalyse Anzeigen"
+    },
+    "analysis": {
+      "loading": "Analyse wird geladen...",
+      "noData": "Keine Analysedaten verfügbar.",
+      "noImpairments": "Keine Beeinträchtigungen erkannt.",
+      "noDiscrepancies": "Keine Abweichungen gefunden.",
+      "evidence": "Nachweise",
+      "scoringFactors": "Bewertungsfaktoren",
+      "viewManual": "Handbuch Anzeigen",
+      "recommendedActions": "Empfohlene Maßnahmen",
+      "noActions": "Keine empfohlenen Maßnahmen verfügbar."
+    },
+    "documentAnalysis": {
+      "loading": "Dokumentenanalyse-Abschnitte werden geladen...",
+      "noData": "Keine Dokumentenseitenanalyse-Daten verfügbar.",
+      "uncategorized": "Nicht Kategorisiert"
+    },
+    "detection": {
+      "noResults": "Keine Erkennungsergebnisse.",
+      "noImpairments": "Keine Beeinträchtigungen erkannt.",
+      "summaryNarrative": "Zusammenfassende Beschreibung",
+      "detectedImpairments": "Erkannte Beeinträchtigungen",
+      "impairment": "Beeinträchtigung",
+      "evidence": "Nachweis",
+      "scoringFactors": "Bewertungsfaktoren",
+      "discrepancies": "Unstimmigkeiten",
+      "viewGuidelines": "Richtlinien für {{name}} Anzeigen"
+    },
+    "scoring": {
+      "noResults": "Keine Bewertungsergebnisse.",
+      "noImpairments": "Keine Beeinträchtigungen bewertet.",
+      "overallScore": "Gesamtbewertung",
+      "impairmentScores": "Beeinträchtigungsbewertungen",
+      "reason": "Grund"
+    },
+    "chat": {
+      "greeting": "Hallo! Ich bin Ihr KI-Assistent. Ich habe dieses Dokument analysiert und kann Ihnen bei allen Fragen dazu helfen.",
+      "greetingPropertyCasualty": "Hallo! Ich bin Ihr Assistent für die Sach- und Unfallversicherungs-Underwriting. Ich habe dieses Dokument analysiert und kann bei Fragen zu Immobiliendetails, Risikofaktoren und Deckungsüberlegungen helfen.",
+      "greetingLife": "Hallo! Ich bin Ihr Assistent für das Lebensversicherungs-Underwriting. Ich habe dieses Dokument analysiert und kann bei Fragen zur Krankengeschichte, zu Risikofaktoren und Policenüberlegungen helfen.",
+      "greetingGeneric": "Hallo! Ich bin Ihr KI-Assistent. Wie kann ich Ihnen bei diesem Dokument helfen?",
+      "placeholder": "Fragen Sie mich alles über das Dokument...",
+      "send": "Senden",
+      "typing": "Tippt...",
+      "error": "Chat-Fehler. Bitte versuchen Sie es erneut.",
+      "userAvatar": "B",
+      "aiAvatar": "KI"
+    },
+    "agentAction": {
+      "title": "KI-Agentenaktion Abgeschlossen",
+      "subtitle": "Unser KI-Agent hat Ihr Dokument verarbeitet und Maßnahmen ergriffen",
+      "close": "Benachrichtigung Schließen",
+      "emailSent": "E-Mail Gesendet!",
+      "emailSentDetails": "Der Agent hat eine E-Mail basierend auf der Dokumentenanalyse gesendet.",
+      "applicationReviewed": "Antrag Überprüft:",
+      "applicationReviewedDetails": "Der Agent hat festgestellt, dass dieser Antrag eine Überprüfung erfordert.",
+      "actionTaken": "Maßnahme Ergriffen:",
+      "actionTakenDetails": "Der Agent hat die Verarbeitung dieses Dokuments abgeschlossen.",
+      "viewDetails": "Details Anzeigen"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "Antragsüberprüfung Abgeschlossen",
+      "applicationStatus": "Antragsstatus:",
+      "riskFactorsIdentified": "Identifizierte Risikofaktoren:",
+      "discrepanciesFound": "Gefundene Unstimmigkeiten:",
+      "finalRecommendation": "Endgültige Empfehlung",
+      "recommendationDetails": "Empfehlungsdetails",
+      "low": "Niedrig:",
+      "medium": "Mittel:",
+      "high": "Hoch:",
+      "ineligible": "NICHT BERECHTIGT",
+      "eligible": "BERECHTIGT",
+      "approved": "GENEHMIGT",
+      "declined": "ABGELEHNT",
+      "pendingReview": "ÜBERPRÜFUNG AUSSTEHEND",
+      "referForReview": "ZUR ÜBERPRÜFUNG WEITERLEITEN",
+      "documentsRequested": "DOKUMENTE ANGEFORDERT",
+      "pages": "Seiten:"
+    },
+    "status": {
+      "created": {
+        "phase": "Auftrag Erstellt",
+        "details": "Der Auftrag wurde erstellt und wartet auf den Abschluss des Dokument-Uploads..."
+      },
+      "uploadPending": {
+        "phase": "Upload Ausstehend",
+        "details": "Der Dokument-Upload wird finalisiert und zur Verarbeitung in die Warteschlange gestellt..."
+      },
+      "classifying": {
+        "phase": "Dokument Wird Klassifiziert",
+        "details": "Die KI analysiert das Dokument, um seinen Typ und seine Struktur für eine optimale Verarbeitung zu bestimmen..."
+      },
+      "extracting": {
+        "phase": "Informationen Werden Extrahiert",
+        "details": "Fortgeschrittene KI-Modelle lesen das Dokument durch und extrahieren wichtige Informationen und Datenpunkte..."
+      },
+      "detecting": {
+        "phase": "Beeinträchtigungen Werden Erkannt",
+        "details": "Die KI identifiziert Beeinträchtigungen und erforderliche Bewertungsfaktoren..."
+      },
+      "scoring": {
+        "phase": "Beeinträchtigungen Werden Bewertet",
+        "details": "Die KI berechnet Beeinträchtigungs-Zwischensummen und die Gesamtbewertung..."
+      },
+      "analyzing": {
+        "phase": "Inhalt Wird Analysiert",
+        "details": "Unsere Underwriting-KI führt eine umfassende Analyse durch, um Risiken, Unstimmigkeiten und Erkenntnisse zu identifizieren..."
+      },
+      "acting": {
+        "phase": "Maßnahmen Werden Ergriffen",
+        "details": "Der KI-Agent trifft Entscheidungen und ergreift geeignete Maßnahmen basierend auf den Analyseergebnissen..."
+      },
+      "complete": {
+        "phase": "Abgeschlossen",
+        "details": "Analyse abgeschlossen! Überprüfen Sie die detaillierten Ergebnisse und KI-Empfehlungen unten."
+      },
+      "failed": {
+        "phase": "Fehlgeschlagen",
+        "details": "Bei der Verarbeitung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+      },
+      "error": {
+        "phase": "Fehler",
+        "details": "Bei der Verarbeitung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+      },
+      "processing": "Wird Verarbeitet",
+      "unknownStatus": "Status: {{status}}"
+    }
+  }
+}

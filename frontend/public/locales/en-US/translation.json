@@ -1,0 +1,323 @@
+{
+  "common": {
+    "upload": "Upload",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "life": "Life",
+    "propertyAndCasualty": "P&C",
+    "andMore": "And More",
+    "switchingLanguage": "Switching language...",
+    "selectLanguage": "Select language",
+    "currentLanguage": "Current language: {{language}}",
+    "availableLanguages": "Available languages",
+    "selected": "Selected"
+  },
+  "header": {
+    "title": "GenAI Underwriting Workbench",
+    "uploadNew": "Upload New",
+    "viewAllJobs": "View All Jobs",
+    "underwritingManual": "Underwriting Manual"
+  },
+  "upload": {
+    "title": "Upload Documents",
+    "selectFiles": "Click to select files",
+    "dragDrop": "or drag and drop PDF files here",
+    "multipleFiles": "You can select multiple PDF files at once",
+    "analyzing": "Analyze {{count}} Document",
+    "analyzing_plural": "Analyze {{count}} Documents",
+    "uploadSuccess": "Uploaded successfully",
+    "uploadFailed": "Upload failed: {{error}}",
+    "uploading": "Uploading...",
+    "gettingUploadUrl": "Getting upload URL...",
+    "uploadingToS3": "Uploading to S3...",
+    "gettingUploadUrls": "Getting upload URLs...",
+    "selectedFiles": "Selected Files ({{count}})",
+    "streamlineLife": "Streamline Your Life Insurance Underwriting",
+    "streamlinePropertyCasualty": "Streamline Your Property & Casualty Insurance Underwriting",
+    "introLife": "Transform complex life insurance applications and medical documents into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for life insurance underwriters to automatically extract, analyze, and evaluate risk factors from application packets.",
+    "introPropertyCasualty": "Transform complex property & casualty insurance applications and ACORD forms into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for P&C insurance underwriters to automatically extract, analyze, and evaluate property risk factors from application packets.",
+    "documentAnalysis": "Document Analysis",
+    "underwriterAnalysis": "Underwriter Analysis",
+    "propertyAssessmentTitle": "Property Assessment",
+    "interactiveAssistant": "Interactive Assistant",
+    "supportedDocuments": "Supported Documents"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "Process complete life insurance application packets",
+        "item2": "Extract medical history and risk factors",
+        "item3": "Automatic classification of APS and lab reports"
+      },
+      "underwriterAnalysis": {
+        "item1": "AI-driven mortality risk assessment",
+        "item2": "Medical history timeline construction",
+        "item3": "Cross-reference discrepancies across documents",
+        "item4": "Automated medical condition evaluation"
+      },
+      "interactiveAssistant": {
+        "item1": "Query complex medical histories",
+        "item2": "Instant access to policy-relevant details",
+        "item3": "Navigate multi-document applications"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "Process complete P&C insurance application packets",
+        "item2": "Extract property details and risk factors",
+        "item3": "Automatic classification of ACORD forms"
+      },
+      "propertyAssessment": {
+        "item1": "AI-driven property risk assessment",
+        "item2": "Detailed property characteristics analysis",
+        "item3": "Cross-reference discrepancies across documents",
+        "item4": "Environmental and geographical risk evaluation"
+      },
+      "interactiveAssistant": {
+        "item1": "Query property details and risk factors",
+        "item2": "Instant access to policy-relevant details",
+        "item3": "Navigate complex ACORD forms"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "Life Insurance Applications",
+      "aps": "Attending Physician Statements (APS)",
+      "labReports": "Lab Reports",
+      "pharmacyRecords": "Pharmacy Records",
+      "financialDisclosures": "Financial Disclosures",
+      "medicalQuestionnaires": "Medical History Questionnaires",
+      "supplementalForms": "Supplemental Forms"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "ACORD Forms",
+      "propertyInspections": "Property Inspections",
+      "claimsHistory": "Claims History",
+      "propertyValuations": "Property Valuations",
+      "floodZoneCertificates": "Flood Zone Certificates",
+      "buildingCodeCompliance": "Building Code Compliance",
+      "securityDocumentation": "Security Documentation"
+    }
+  },
+  "insuranceType": {
+    "life": "Life Insurance",
+    "propertyAndCasualty": "Property & Casualty",
+    "selectType": "Insurance Type"
+  },
+  "jobs": {
+    "title": "Underwriting Jobs",
+    "noJobs": "You haven't uploaded any documents yet.",
+    "uploadFirst": "Upload Your First Document",
+    "loading": "Loading jobs...",
+    "fetchError": "Failed to fetch jobs",
+    "tryAgain": "Try Again",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "failed": "Failed"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "Risk Assessment",
+    "discrepancies": "Discrepancies",
+    "medicalTimeline": "Medical Timeline",
+    "propertyAssessment": "Property Assessment",
+    "finalRecommendation": "Final Recommendation"
+  },
+  "chat": {
+    "title": "Chat with AI Assistant",
+    "placeholder": "Ask a question about this document...",
+    "send": "Send",
+    "thinking": "Thinking..."
+  },
+  "errors": {
+    "pdfOnly": "Please select only PDF files. Invalid files: {{files}}",
+    "selectFile": "Please select at least one file",
+    "uploadFailed": "Upload failed",
+    "unauthorized": "Unauthorized: API access denied",
+    "fetchFailed": "Failed to fetch data",
+    "unauthorizedUploadUrl": "Unauthorized: API access denied for generating upload URL.",
+    "failedUploadUrl": "Failed to get upload URL.",
+    "invalidUploadResponse": "Invalid response from upload URL generation endpoint.",
+    "s3UploadFailed": "S3 Upload Failed for {{filename}}: {{error}}",
+    "unauthorizedBatchUpload": "Unauthorized: API access denied for batch upload.",
+    "failedBatchUploadUrls": "Failed to get batch upload URLs.",
+    "invalidBatchResponse": "Invalid response from batch upload endpoint.",
+    "noUploadUrlForFile": "No upload URL found for {{filename}}"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "Download Analysis Report",
+      "pdf": "Download PDF",
+      "generating": "Generating..."
+    },
+    "loadingJobDetails": "Loading Job Details...",
+    "fetchingLatestInfo": "Fetching the latest information...",
+    "errorOccurred": "An Error Occurred",
+    "retry": "Retry",
+    "processingJob": "Processing Job {{jobId}}...",
+    "howItWorks": "How It Works",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page",
+    "of": "of",
+    "print": "Print PDF",
+    "refresh": "Refresh Data",
+    "hideAnalysis": "Hide Analysis",
+    "showAnalysis": "Show Analysis",
+    "loadingDocument": "Loading Document...",
+    "pdfPlaceholder": "PDF document will appear here once analysis is complete.",
+    "loadingPdf": "Loading PDF...",
+    "errorLoadingPdf": "Error loading PDF.",
+    "tabs": {
+      "documentAnalysis": "Data Extraction",
+      "underwriter": "Underwriter",
+      "impairments": "Impairments",
+      "scoring": "Scoring",
+      "chat": "Chat"
+    },
+    "sections": {
+      "uwScore": "UW Score",
+      "riskAssessment": "Risk Assessment",
+      "detectedImpairments": "Detected Impairments",
+      "discrepancies": "Discrepancies",
+      "medicalTimeline": "Medical Timeline",
+      "propertyAssessment": "Property Assessment",
+      "finalRecommendation": "Final Recommendation"
+    },
+    "toggle": {
+      "showRawData": "Show Document Analysis"
+    },
+    "analysis": {
+      "loading": "Loading analysis...",
+      "noData": "No analysis data available.",
+      "noImpairments": "No impairments detected.",
+      "noDiscrepancies": "No discrepancies found.",
+      "evidence": "Evidence",
+      "scoringFactors": "Scoring Factors",
+      "viewManual": "View Manual",
+      "recommendedActions": "Recommended Actions",
+      "noActions": "No recommended actions available."
+    },
+    "documentAnalysis": {
+      "loading": "Loading document analysis sections...",
+      "noData": "No document page analysis data available.",
+      "uncategorized": "Uncategorized"
+    },
+    "detection": {
+      "noResults": "No detection results.",
+      "noImpairments": "No impairments detected.",
+      "summaryNarrative": "Summary Narrative",
+      "detectedImpairments": "Detected Impairments",
+      "impairment": "Impairment",
+      "evidence": "Evidence",
+      "scoringFactors": "Scoring Factors",
+      "discrepancies": "Discrepancies",
+      "viewGuidelines": "View Guidelines for {{name}}"
+    },
+    "scoring": {
+      "noResults": "No scoring results.",
+      "noImpairments": "No impairments scored.",
+      "overallScore": "Overall Score",
+      "impairmentScores": "Impairment Scores",
+      "reason": "Reason"
+    },
+    "chat": {
+      "greeting": "Hi! I'm your AI assistant. I've analyzed this document and can help answer any questions you have about it.",
+      "greetingPropertyCasualty": "Hello! I'm your Property & Casualty insurance underwriting assistant. I've analyzed this document and can help with questions about property details, risk factors, and coverage considerations.",
+      "greetingLife": "Hello! I'm your Life Insurance underwriting assistant. I've analyzed this document and can help with questions about medical history, risk factors, and policy considerations.",
+      "greetingGeneric": "Hi! I'm your AI assistant. How can I help with this document?",
+      "placeholder": "Ask me anything about the document...",
+      "send": "Send",
+      "typing": "Typing...",
+      "error": "Chat error. Please try again.",
+      "userAvatar": "U",
+      "aiAvatar": "AI"
+    },
+    "agentAction": {
+      "title": "AI Agent Action Complete",
+      "subtitle": "Our AI agent has processed your document and taken action",
+      "close": "Close notification",
+      "emailSent": "Email Sent!",
+      "emailSentDetails": "The agent has sent an email based on the document analysis.",
+      "applicationReviewed": "Application Reviewed:",
+      "applicationReviewedDetails": "The agent has determined this application requires review.",
+      "actionTaken": "Action Taken:",
+      "actionTakenDetails": "The agent has completed processing this document.",
+      "viewDetails": "View Details"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "Application Review Complete",
+      "applicationStatus": "Application Status:",
+      "riskFactorsIdentified": "Risk Factors Identified:",
+      "discrepanciesFound": "Discrepancies Found:",
+      "finalRecommendation": "Final Recommendation",
+      "recommendationDetails": "Recommendation Details",
+      "low": "Low:",
+      "medium": "Medium:",
+      "high": "High:",
+      "ineligible": "INELIGIBLE",
+      "eligible": "ELIGIBLE",
+      "approved": "APPROVED",
+      "declined": "DECLINED",
+      "pendingReview": "PENDING REVIEW",
+      "referForReview": "REFER FOR REVIEW",
+      "documentsRequested": "DOCUMENTS REQUESTED",
+      "pages": "Pages:"
+    },
+    "status": {
+      "created": {
+        "phase": "Job Created",
+        "details": "Job has been created and is waiting for document upload to complete..."
+      },
+      "uploadPending": {
+        "phase": "Upload Pending",
+        "details": "Document upload is being finalized and queued for processing..."
+      },
+      "classifying": {
+        "phase": "Classifying Document",
+        "details": "The AI is analyzing the document to determine its type and structure for optimal processing..."
+      },
+      "extracting": {
+        "phase": "Extracting Information",
+        "details": "Advanced AI models are reading through the document and extracting key information and data points..."
+      },
+      "detecting": {
+        "phase": "Detecting Impairments",
+        "details": "The AI is identifying impairments and required scoring factors..."
+      },
+      "scoring": {
+        "phase": "Scoring Impairments",
+        "details": "The AI is calculating impairment sub-totals and overall score..."
+      },
+      "analyzing": {
+        "phase": "Analyzing Content",
+        "details": "Our underwriting AI is performing comprehensive analysis to identify risks, discrepancies, and insights..."
+      },
+      "acting": {
+        "phase": "Taking Action",
+        "details": "The AI agent is making decisions and taking appropriate actions based on the analysis results..."
+      },
+      "complete": {
+        "phase": "Complete",
+        "details": "Analysis complete! Review the detailed results and AI recommendations below."
+      },
+      "failed": {
+        "phase": "Failed",
+        "details": "An error occurred during processing. Please try again or contact support."
+      },
+      "error": {
+        "phase": "Error",
+        "details": "An error occurred during processing. Please try again or contact support."
+      },
+      "processing": "Processing",
+      "unknownStatus": "Status: {{status}}"
+    }
+  }
+}
+

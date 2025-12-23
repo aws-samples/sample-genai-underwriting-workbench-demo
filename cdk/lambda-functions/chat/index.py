@@ -21,7 +21,22 @@ bedrock_runtime = boto3.client(service_name='bedrock-runtime', config=bedrock_re
 
 # Environment variables
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
-BEDROCK_CHAT_MODEL_ID = os.environ.get('BEDROCK_CHAT_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
+BEDROCK_CHAT_MODEL_ID = os.environ.get('BEDROCK_CHAT_MODEL_ID', 'global.anthropic.claude-haiku-4-5-20251001-v1:0')
+
+
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文).',
+        'ja-JP': 'Respond in Japanese (日本語).',
+        'es-ES': 'Respond in Spanish (Español).',
+        'fr-FR': 'Respond in French (Français).',
+        'fr-CA': 'Respond in Canadian French (Français canadien).',
+        'de-DE': 'Respond in German (Deutsch).',
+        'it-IT': 'Respond in Italian (Italiano).',
+    }
+    return language_map.get(language, 'Respond in English.')
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
@@ -32,7 +47,7 @@ def lambda_handler(event, context):
     
     headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Language',
         'Access-Control-Allow-Methods': 'POST,OPTIONS',
         'Content-Type': 'application/json'
     }
@@ -67,8 +82,10 @@ def lambda_handler(event, context):
         print(f"Error processing request: {str(e)}")
         return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': f'Internal server error: {str(e)}'})}
 
-def get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output):
+def get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output, language='en-US'):
     """Generate a system prompt based on document type and insurance type"""
+    
+    language_instruction = get_language_instruction(language)
     
     # Base context with document and analysis data
     base_context = f"""You are an AI assistant for insurance underwriting.
@@ -134,12 +151,14 @@ def get_chat_system_prompt(document_type, insurance_type, extracted_data, analys
         """
     
     # Common instructions for all insurance types
-    common_instructions = """
+    common_instructions = f"""
     Please answer any questions about this document or analysis. Be professional, accurate, and helpful.
     If asked to perform calculations related to medical underwriting (like BMI), please use the calculate_bmi tool.
     
     When uncertain about specific details, acknowledge the limitations of the information provided.
     Avoid making definitive underwriting decisions, but provide guidance based on industry standards.
+    
+    IMPORTANT: {language_instruction}
     """
     
     # Combine all sections for the complete prompt
@@ -165,6 +184,7 @@ def process_chat(job_id, messages):
         # Extract job details for context
         document_type = item.get('documentType', {}).get('S', 'Unknown')
         insurance_type = item.get('insuranceType', {}).get('S', 'property_casualty')  # Default to P&C if not specified
+        user_language = item.get('userLanguage', {}).get('S', 'en-US')  # Get user language preference
         
         # Extract structured data if available
         extracted_data_json = item.get('extractedDataJsonStr', {}).get('S', '{}')
@@ -270,7 +290,7 @@ def process_chat(job_id, messages):
             tools = common_tools
         
         # Create the system prompt with context
-        system_prompt = get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output)
+        system_prompt = get_chat_system_prompt(document_type, insurance_type, extracted_data, analysis_output, user_language)
         
         # Prepare the conversation for Claude, converting frontend format to Bedrock format
         def format_messages_for_bedrock(messages_from_frontend):

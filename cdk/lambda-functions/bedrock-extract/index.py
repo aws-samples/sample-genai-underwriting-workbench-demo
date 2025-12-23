@@ -5,11 +5,18 @@ import io
 import urllib.parse
 import re
 import gc
+import time
+import traceback
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from datetime import datetime, timezone
 from pdf2image import pdfinfo_from_path, convert_from_path
 from PIL import Image, ImageOps
+
+def log_timing(operation_name, start_time):
+    """Log the duration of an operation"""
+    elapsed = time.time() - start_time
+    print(f"[TIMING] {operation_name} completed in {elapsed:.2f}s")
 
 # Configure retry settings for AWS clients
 # Configure retry settings for Bedrock client only
@@ -30,7 +37,22 @@ BATCH_SIZE = 1
 DPI = 150
 MAX_DIMENSION = 8000
 
-def get_extraction_prompt(document_type, insurance_type, page_numbers, previous_analysis_json="{}"):
+
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English. All extracted field names, section headers, and values should be in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文). All extracted field names, section headers, and values should be in Simplified Chinese.',
+        'ja-JP': 'Respond in Japanese (日本語). All extracted field names, section headers, and values should be in Japanese.',
+        'es-ES': 'Respond in Spanish (Español). All extracted field names, section headers, and values should be in Spanish.',
+        'fr-FR': 'Respond in French (Français). All extracted field names, section headers, and values should be in French.',
+        'fr-CA': 'Respond in Canadian French (Français canadien). All extracted field names, section headers, and values should be in Canadian French.',
+        'de-DE': 'Respond in German (Deutsch). All extracted field names, section headers, and values should be in German.',
+        'it-IT': 'Respond in Italian (Italiano). All extracted field names, section headers, and values should be in Italian.',
+    }
+    return language_map.get(language, 'Respond in English. All extracted field names, section headers, and values should be in English.')
+
+def get_extraction_prompt(document_type, insurance_type, page_numbers, previous_analysis_json="{}", language_instruction=""):
     """Get the appropriate extraction prompt for a batch of pages, considering previous analysis."""
     
     # Base prompt
@@ -57,6 +79,7 @@ Analysis of previous pages (if any):
 - Each page object must include a `"page_number"` and all other data you extracted.
 - If a page is blank or contains no extractable information, return an object with just the page number and a note, like `{{"page_number": 1, "status": "No information found"}}`.
 - Do not include any explanations or text outside of the final JSON object.
+- IMPORTANT: {language_instruction}
 
 **Example Output Format:**
 ```json
@@ -111,26 +134,48 @@ def update_job_status(job_id, status, error_message=None):
 
 
 def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))
+    handler_start = time.time()
+    print(f"[extract] === EXTRACT LAMBDA START === remaining_time={context.get_remaining_time_in_millis()}ms")
+    print(f"[extract] Event keys: {list(event.keys()) if isinstance(event, dict) else 'not a dict'}")
+    print(f"[extract] Event size: {len(json.dumps(event))} bytes")
     batch_data = {}        # make sure this exists no matter what
     job_id = None
     
     # --- 1) Parse event ---
+    print(f"[extract] Step 1: Parsing event, remaining_time={context.get_remaining_time_in_millis()}ms")
     try:
         bucket = event['detail']['bucket']['name']
         key = urllib.parse.unquote_plus(event['detail']['object']['key'])
         job_id = event['classification']['jobId']
         doc_type = event['classification']['classification']
         ins_type = event['classification']['insuranceType']
+        print(f"[extract] bucket={bucket}, key={key}")
+        print(f"[extract] job_id={job_id}, doc_type={doc_type}, ins_type={ins_type}")
     except Exception as e:
         error_msg = f"Invalid event format: {e}"
-        print(f"ERROR: {error_msg}")
+        print(f"[extract] ERROR: {error_msg}")
+        traceback.print_exc()
         if job_id:
             update_job_status(job_id, "FAILED", error_msg)
         return {"status": "ERROR", "message": error_msg}
 
-    # --- 2) Mark EXTRACTING in DynamoDB ---
+    # --- 2) Mark EXTRACTING in DynamoDB and get user language ---
+    print(f"[extract] Step 2: Updating status to EXTRACTING and getting user language, remaining_time={context.get_remaining_time_in_millis()}ms")
+    user_language = 'en-US'  # Default
     if job_id and JOBS_TABLE:
+        try:
+            # Get userLanguage from DynamoDB
+            resp = dynamodb_client.get_item(
+                TableName=JOBS_TABLE,
+                Key={'jobId': {'S': job_id}},
+                ProjectionExpression='userLanguage'
+            )
+            item = resp.get('Item', {})
+            user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+            print(f"[extract] User language for job {job_id}: {user_language}")
+        except Exception as e:
+            print(f"[extract] Error reading userLanguage: {e}")
+        
         try:
             now = datetime.now(timezone.utc).isoformat()
             dynamodb_client.update_item(
@@ -140,32 +185,44 @@ def lambda_handler(event, context):
                 ExpressionAttributeNames={'#s': 'status', '#t': 'extractionStartTimestamp'},
                 ExpressionAttributeValues={':s': {'S': 'EXTRACTING'}, ':t': {'S': now}},
             )
-        except Exception:
-            pass
+            print(f"[extract] Updated status to EXTRACTING for job {job_id}")
+        except Exception as e:
+            print(f"[extract] WARNING: Failed to update status: {e}")
 
     # --- Main processing with comprehensive error handling ---
     try:
         # --- 3) Download PDF locally ---
+        print(f"[extract] Step 3: Downloading PDF from S3, remaining_time={context.get_remaining_time_in_millis()}ms")
         local_path = f"/tmp/{os.path.basename(key)}"
+        s3_download_start = time.time()
         try:
             s3.download_file(bucket, key, local_path)
+            log_timing("S3 download", s3_download_start)
+            file_size = os.path.getsize(local_path)
+            print(f"[extract] Downloaded PDF, size={file_size} bytes")
         except Exception as e:
+            log_timing("S3 download (FAILED)", s3_download_start)
             error_msg = f"S3 download failed: {e}"
-            print(f"ERROR: {error_msg}")
+            print(f"[extract] ERROR: {error_msg}")
+            traceback.print_exc()
             update_job_status(job_id, "FAILED", error_msg)
             return {"status": "ERROR", "message": error_msg}
 
         # --- 4) Read total pages from PDF ---
+        print(f"[extract] Step 4: Reading PDF info, remaining_time={context.get_remaining_time_in_millis()}ms")
         try:
             info = pdfinfo_from_path(local_path)
             total_pages_full = int(info.get("Pages", 0))
+            print(f"[extract] PDF has {total_pages_full} total pages")
         except Exception as e:
             error_msg = f"Could not read PDF info: {e}"
-            print(f"ERROR: {error_msg}")
+            print(f"[extract] ERROR: {error_msg}")
+            traceback.print_exc()
             update_job_status(job_id, "FAILED", error_msg)
             return {"status": "ERROR", "message": error_msg}
 
         # --- 5) Determine page batches (or single range) ---
+        print(f"[extract] Step 5: Determining page batches, remaining_time={context.get_remaining_time_in_millis()}ms")
         page_range = event.get('pages')
         page_batches = []
         if page_range:
@@ -173,6 +230,7 @@ def lambda_handler(event, context):
             first_page = page_range.get('start', 1)
             last_page = page_range.get('end', first_page)
             page_batches.append((first_page, last_page))
+            print(f"[extract] Processing single batch from SF Map: pages {first_page}-{last_page}")
         else:
             # full-document batching
             page = 1
@@ -180,12 +238,18 @@ def lambda_handler(event, context):
                 last = min(page + BATCH_SIZE - 1, total_pages_full)
                 page_batches.append((page, last))
                 page = last + 1
+            print(f"[extract] Full document batching: {len(page_batches)} batches")
 
         all_data = {}
 
         # --- 6) Process each batch in sequence (Step Functions will parallelize via Map) ---
-        for (first, last) in page_batches:
+        print(f"[extract] Step 6: Processing page batches, remaining_time={context.get_remaining_time_in_millis()}ms")
+        for batch_idx, (first, last) in enumerate(page_batches):
+            batch_start = time.time()
+            print(f"[extract] Processing batch {batch_idx+1}/{len(page_batches)}: pages {first}-{last}, remaining_time={context.get_remaining_time_in_millis()}ms")
+            
             # Convert only this batch to images
+            convert_start = time.time()
             try:
                 imgs = convert_from_path(
                     local_path,
@@ -194,15 +258,22 @@ def lambda_handler(event, context):
                     first_page=first,
                     last_page=last
                 )
+                log_timing(f"PDF to image conversion (pages {first}-{last})", convert_start)
+                print(f"[extract] Converted {len(imgs)} page(s) to images")
             except Exception as e:
+                log_timing(f"PDF to image conversion (FAILED)", convert_start)
                 error_msg = f"PDF→image conversion failed for pages {first}–{last}: {e}"
-                print(f"ERROR: {error_msg}")
+                print(f"[extract] ERROR: {error_msg}")
+                traceback.print_exc()
                 update_job_status(job_id, "FAILED", error_msg)
                 return {"status": "ERROR", "message": error_msg}
 
             # Build prompt & payload
-            prompt = get_extraction_prompt(doc_type, ins_type, list(range(first, last+1)), json.dumps(all_data, indent=2))
+            language_instruction = get_language_instruction(user_language)
+            prompt = get_extraction_prompt(doc_type, ins_type, list(range(first, last+1)), json.dumps(all_data, indent=2), language_instruction)
+            print(f"[extract] Extraction prompt size: {len(prompt)} chars")
             messages = [{"text": prompt}]
+            total_image_bytes = 0
             for idx, img in enumerate(imgs, start=first):
                 img = img.convert("L")
                 img = ImageOps.crop(img, border=50)
@@ -213,61 +284,92 @@ def lambda_handler(event, context):
                 buf = io.BytesIO()
                 img.save(buf, format="JPEG", quality=60, optimize=True)
                 payload_bytes = buf.getvalue()
+                total_image_bytes += len(payload_bytes)
                 buf.close()
                 messages.append({"text": f"--- Image for Page {idx} ---"})
                 messages.append({"image": {"format": "jpeg", "source": {"bytes": payload_bytes}}})
+            print(f"[extract] Total image payload size: {total_image_bytes} bytes")
 
             # Call Bedrock Converse API
+            bedrock_start = time.time()
+            model_id = os.environ.get('BEDROCK_MODEL_ID')
+            print(f"[extract] Calling Bedrock model {model_id}, remaining_time={context.get_remaining_time_in_millis()}ms")
             try:
                 resp = bedrock_runtime.converse(
-                    modelId=os.environ.get('BEDROCK_MODEL_ID'),
+                    modelId=model_id,
                     messages=[{"role": "user", "content": messages}],
                     inferenceConfig={"maxTokens": 4096, "temperature": 0.0}
                 )
+                log_timing(f"Bedrock Converse API call (pages {first}-{last})", bedrock_start)
+                # Log usage metrics if available
+                usage = resp.get('usage', {})
+                print(f"[extract] Bedrock usage: inputTokens={usage.get('inputTokens')}, outputTokens={usage.get('outputTokens')}")
             except Exception as e:
+                log_timing(f"Bedrock Converse API call (FAILED)", bedrock_start)
                 error_msg = f"Bedrock call failed for pages {first}–{last}: {e}"
-                print(f"ERROR: {error_msg}")
+                print(f"[extract] ERROR: {error_msg}")
+                traceback.print_exc()
                 update_job_status(job_id, "FAILED", error_msg)
                 return {"status": "ERROR", "message": error_msg}
 
             # Extract JSON
             output = resp.get('output', {}).get('message', {})
             text = (output.get('content') or [{}])[0].get('text', '')
+            print(f"[extract] Bedrock response text length: {len(text)} chars")
             match = (re.search(r'```json\s*([\s\S]*?)```', text, re.DOTALL)
                      or re.search(r'(\{[\s\S]*\})', text, re.DOTALL))
             if match:
                 try:
                     batch_data = json.loads(match.group(1))
+                    print(f"[extract] Parsed batch_data keys: {list(batch_data.keys())}")
                     for k, pages_list in batch_data.items():
                         all_data.setdefault(k, []).extend(pages_list or [])
-                except Exception:
-                    pass
+                except Exception as parse_err:
+                    print(f"[extract] WARNING: Failed to parse JSON from response: {parse_err}")
+                    print(f"[extract] Response preview: {text[:500]}")
+            else:
+                print(f"[extract] WARNING: No JSON found in Bedrock response")
+                print(f"[extract] Response preview: {text[:500]}")
 
             # Cleanup
             del imgs
             gc.collect()
+            log_timing(f"Total batch {batch_idx+1} processing", batch_start)
 
-        # --- 8) Cleanup & return ---
+        # --- 7) Cleanup & return ---
+        print(f"[extract] Step 7: Cleanup and return, remaining_time={context.get_remaining_time_in_millis()}ms")
         try:
             os.remove(local_path)
-        except OSError:
-            pass
+            print(f"[extract] Cleaned up temporary file: {local_path}")
+        except OSError as e:
+            print(f"[extract] WARNING: Failed to cleanup temp file: {e}")
 
         chunk_key = f"{job_id}/extracted/{first_page}-{last_page}.json"
+        batch_data_json = json.dumps(batch_data)
+        print(f"[extract] Uploading extraction result to S3: {chunk_key}, size={len(batch_data_json)} bytes")
+        s3_upload_start = time.time()
         s3.put_object(
             Bucket=os.environ['EXTRACTION_BUCKET'],
             Key=chunk_key,
-            Body=json.dumps(batch_data),
+            Body=batch_data_json,
         )
-        return {
+        log_timing("S3 upload extraction result", s3_upload_start)
+        
+        log_timing("Total EXTRACT lambda execution", handler_start)
+        print(f"[extract] === EXTRACT LAMBDA COMPLETE === remaining_time={context.get_remaining_time_in_millis()}ms")
+        result = {
             "pages": {"start": first_page, "end": last_page},
             "chunkS3Key": chunk_key
         }
+        print(f"[extract] Returning result: {json.dumps(result)}")
+        return result
         
     except Exception as e:
         # Catch any unexpected errors and update job status
         error_msg = f"Unexpected error during extraction: {str(e)}"
-        print(f"ERROR: {error_msg}")
-        print(f"Exception details: {traceback.format_exc()}")
+        print(f"[extract] ERROR: {error_msg}")
+        traceback.print_exc()
         update_job_status(job_id, "FAILED", error_msg)
+        log_timing("Total EXTRACT lambda execution (FAILED)", handler_start)
+        print(f"[extract] === EXTRACT LAMBDA FAILED === remaining_time={context.get_remaining_time_in_millis()}ms")
         return {"status": "ERROR", "message": error_msg}

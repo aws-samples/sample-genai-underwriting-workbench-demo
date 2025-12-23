@@ -505,7 +505,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(3),
       memorySize: 1024,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [pdfProcessingLayer, boto3Layer],
@@ -534,7 +534,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(10),
       memorySize: 2048,
       environment: {
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         MAX_PAGES_FOR_EXTRACTION: '5',
         EXTRACTION_BUCKET: extractionBucket.bucketName
@@ -542,17 +542,36 @@ export class CdkStack extends cdk.Stack {
       layers: [pillowLayer, pdfProcessingLayer, boto3Layer],
     });
 
-    // 5. Analyze Lambda
+    // 5. Analyze Lambda (comprehensive analysis - risks, discrepancies, recommendations)
+    // Now uses Strands Agent for agentic analysis
     const analyzeLambda = new lambda.Function(this, 'AnalyzeLambda', {
       functionName: 'ai-underwriting-analyze',
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions/analyze'),
       handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(10),
+      ephemeralStorageSize: cdk.Size.gibibytes(2),
+      memorySize: 512,
+      environment: {
+        BEDROCK_ANALYSIS_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        JOBS_TABLE_NAME: jobsTable.tableName,
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
+        TRACE_BUCKET: analysisTracesBucket.bucketName,
+      },
+      layers: [strandsSDKLayer, boto3Layer],
+    });
+
+    // 5b. Detect Impairments Lambda (Strands Agent with KB for impairment detection)
+    const detectImpairmentsLambda = new lambda.Function(this, 'DetectImpairmentsLambda', {
+      functionName: 'ai-underwriting-detect-impairments',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/detect-impairments'),
+      handler: 'index.lambda_handler',
       timeout: cdk.Duration.minutes(5),
       ephemeralStorageSize: cdk.Size.gibibytes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_ANALYSIS_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_DETECTION_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         EXTRACTION_BUCKET: extractionBucket.bucketName,
         KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
@@ -586,7 +605,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       environment: {
-        BEDROCK_SCORING_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_SCORING_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
         KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
         SCORING_TOP_K: '5',
@@ -604,7 +623,7 @@ export class CdkStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(2),
       memorySize: 512,
       environment: {
-        BEDROCK_CHAT_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_CHAT_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         JOBS_TABLE_NAME: jobsTable.tableName,
       },
       layers: [boto3Layer],
@@ -627,9 +646,13 @@ export class CdkStack extends cdk.Stack {
     bedrockExtractLambda.addToRolePolicy(s3PolicyStatement);
 
     analyzeLambda.addToRolePolicy(bedrockPolicyStatement);
-    analyzeLambda.addToRolePolicy(bedrockKbRetrievePolicy);
     analyzeLambda.addToRolePolicy(dynamodbPolicyStatement);
     analyzeLambda.addToRolePolicy(s3PolicyStatement);
+
+    detectImpairmentsLambda.addToRolePolicy(bedrockPolicyStatement);
+    detectImpairmentsLambda.addToRolePolicy(bedrockKbRetrievePolicy);
+    detectImpairmentsLambda.addToRolePolicy(dynamodbPolicyStatement);
+    detectImpairmentsLambda.addToRolePolicy(s3PolicyStatement);
 
     actLambda.addToRolePolicy(bedrockPolicyStatement);
     actLambda.addToRolePolicy(dynamodbPolicyStatement);
@@ -687,10 +710,19 @@ export class CdkStack extends cdk.Stack {
 
     parallelExtract.itemProcessor(extractTask);
 
+    // Analyze step (comprehensive analysis - risks, discrepancies, recommendations)
+    // Runs first to avoid Bedrock throttling when running in parallel
     const analyzeStep = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeData', {
       lambdaFunction: analyzeLambda,
       payloadResponseOnly: true,
-      // Pass through the full analyze Lambda response without reshaping
+      resultPath: '$.analysisOutput',
+    });
+
+    // Detect impairments step (Strands Agent with KB)
+    // Runs after analyze to avoid Bedrock throttling
+    const detectStep = new stepfunctionsTasks.LambdaInvoke(this, 'DetectImpairments', {
+      lambdaFunction: detectImpairmentsLambda,
+      payloadResponseOnly: true,
       resultPath: '$.analysisDetection',
     });
 
@@ -713,6 +745,7 @@ export class CdkStack extends cdk.Stack {
       .next(generateBatchesStep)
       .next(parallelExtract)
       .next(analyzeStep)
+      .next(detectStep)
       .next(scoreStep)
       .next(actStep);
       
@@ -799,7 +832,7 @@ export class CdkStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token'],
+        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'X-User-Language'],
         maxAge: cdk.Duration.days(1),
       },
       // Enable request validation
@@ -913,6 +946,7 @@ export class CdkStack extends cdk.Stack {
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
       },
       defaultRootObject: 'index.html',
@@ -965,49 +999,9 @@ export class CdkStack extends cdk.Stack {
       description: 'Frontend URL',
     });
 
-    new cdk.CfnOutput(this, 'ApiEndpoint', {
-      value: api.url,
-      description: 'API Gateway endpoint',
-    });
-
-    new cdk.CfnOutput(this, 'DocumentBucketName', {
-      value: documentBucket.bucketName,
-      description: 'S3 Bucket for document uploads',
-    });
-
-    new cdk.CfnOutput(this, 'ExtractionBucketName', {
-      value: extractionBucket.bucketName,
-      description: 'S3 Bucket for document uploads',
-    });
-
-    new cdk.CfnOutput(this, 'OutputBucketName', {
-      value: mockOutputBucket.bucketName,
-      description: 'S3 Bucket for agent action outputs',
-    });
-
-    new cdk.CfnOutput(this, 'KnowledgeBaseSourceBucketName', {
-      value: knowledgeBaseSourceBucket.bucketName,
-      description: 'S3 Bucket for Knowledge Base source markdown',
-    });
-
-    new cdk.CfnOutput(this, 'AnalysisTracesBucketName', {
-      value: analysisTracesBucket.bucketName,
-      description: 'S3 Bucket for analysis trace JSON',
-    });
-
     new cdk.CfnOutput(this, 'KnowledgeBaseId', {
       value: knowledgeBase.attrKnowledgeBaseId,
       description: 'Bedrock Knowledge Base ID',
-    });
-
-    new cdk.CfnOutput(this, 'JobsTableName', {
-      value: jobsTable.tableName,
-      description: 'DynamoDB table for job tracking',
-    });
-
-    new cdk.CfnOutput(this, 'StateMachineArn', {
-      value: stateMachine.stateMachineArn,
-      description: 'Step Functions state machine ARN',
     });
   }
 }

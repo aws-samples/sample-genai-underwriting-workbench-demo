@@ -251,8 +251,8 @@
 /* Analysis viewer */
 .analysis-viewer {
   height: 100%;
-  overflow-y: auto;
-  padding: 2rem 2rem 2rem 2rem;
+  overflow: hidden;
+  padding: 1.5rem;
   background: #ffffff;
   position: relative;
   display: flex;
@@ -260,7 +260,6 @@
   min-width: 300px;
   animation: fadeIn 1.2s ease-out;
   transition: all 0.3s ease;
-  max-height: 100%;
 }
 
 .analysis-viewer.collapsed {
@@ -1099,15 +1098,15 @@
   .tabs {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     background-color: #ffffff;
-    padding: 0.8rem;
+    padding: 0.6rem;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
   
   .tab-button {
-    padding: 0.85rem 1.5rem;
+    padding: 0.7rem 1rem;
     border: none;
     background: #f1f5f9;
     color: #64748b;
@@ -1117,11 +1116,11 @@
     transition: all 0.2s;
     flex: 1;
     text-align: center;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     position: relative;
   }
   
@@ -1135,6 +1134,12 @@
     background: #2563eb;
     color: white;
     box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+  }
+
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .progress-message {

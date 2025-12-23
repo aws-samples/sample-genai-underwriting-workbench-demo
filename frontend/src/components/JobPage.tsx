@@ -3,6 +3,8 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import Split from 'react-split'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useTranslation } from 'react-i18next'
+import { apiClient } from '../utils/apiClient'
 import '../styles/JobPage.css'
 import { useNavigate } from 'react-router-dom'
 import { HowItWorksDrawer } from './HowItWorksDrawer'
@@ -227,66 +229,67 @@ const getFirstPageNumberFromData = (data: any): number | undefined => {
   return search(data);
 };
 
-// Define status mapping for user-friendly display
+// Define status mapping for user-friendly display - uses translation keys
 const STATUS_MAPPING = {
   'CREATED': {
     step: 1,
-    phase: 'Job Created',
-    details: 'Job has been created and is waiting for document upload to complete...'
+    phaseKey: 'jobPage.status.created.phase',
+    detailsKey: 'jobPage.status.created.details'
   },
   'UPLOAD_PENDING': {
     step: 1,
-    phase: 'Upload Pending',
-    details: 'Document upload is being finalized and queued for processing...'
+    phaseKey: 'jobPage.status.uploadPending.phase',
+    detailsKey: 'jobPage.status.uploadPending.details'
   },
   'CLASSIFYING': {
     step: 1,
-    phase: 'Classifying Document',
-    details: 'The AI is analyzing the document to determine its type and structure for optimal processing...'
+    phaseKey: 'jobPage.status.classifying.phase',
+    detailsKey: 'jobPage.status.classifying.details'
   },
   'EXTRACTING': {
     step: 2,
-    phase: 'Extracting Information',
-    details: 'Advanced AI models are reading through the document and extracting key information and data points...'
+    phaseKey: 'jobPage.status.extracting.phase',
+    detailsKey: 'jobPage.status.extracting.details'
   },
   'DETECTING': {
     step: 3,
-    phase: 'Detecting Impairments',
-    details: 'The AI is identifying impairments and required scoring factors...'
+    phaseKey: 'jobPage.status.detecting.phase',
+    detailsKey: 'jobPage.status.detecting.details'
   },
   'SCORING': {
     step: 4,
-    phase: 'Scoring Impairments',
-    details: 'The AI is calculating impairment sub-totals and overall score...'
+    phaseKey: 'jobPage.status.scoring.phase',
+    detailsKey: 'jobPage.status.scoring.details'
   },
   'ANALYZING': {
     step: 3,
-    phase: 'Analyzing Content',
-    details: 'Our underwriting AI is performing comprehensive analysis to identify risks, discrepancies, and insights...'
+    phaseKey: 'jobPage.status.analyzing.phase',
+    detailsKey: 'jobPage.status.analyzing.details'
   },
   'ACTING': {
     step: 4,
-    phase: 'Taking Action',
-    details: 'The AI agent is making decisions and taking appropriate actions based on the analysis results...'
+    phaseKey: 'jobPage.status.acting.phase',
+    detailsKey: 'jobPage.status.acting.details'
   },
   'COMPLETE': {
     step: 5,
-    phase: 'Complete',
-    details: 'Analysis complete! Review the detailed results and AI recommendations below.'
+    phaseKey: 'jobPage.status.complete.phase',
+    detailsKey: 'jobPage.status.complete.details'
   },
   'Failed': {
     step: 5,
-    phase: 'Failed',
-    details: 'An error occurred during processing. Please try again or contact support.'
+    phaseKey: 'jobPage.status.failed.phase',
+    detailsKey: 'jobPage.status.failed.details'
   },
   'ERROR': {
     step: 5,
-    phase: 'Error',
-    details: 'An error occurred during processing. Please try again or contact support.'
+    phaseKey: 'jobPage.status.error.phase',
+    detailsKey: 'jobPage.status.error.details'
   }
 } as const;
 
 export function JobPage({ jobId }: JobPageProps) {
+  const { t } = useTranslation()
   const [error, setErrorOriginal] = useState<string | null>(null)
   const [showError, setShowError] = useState(false)
   const navigate = useNavigate();
@@ -302,14 +305,7 @@ export function JobPage({ jobId }: JobPageProps) {
   const [pdfBlob] = useState<Blob | null>(null)
   const [, setInsuranceTypeState] = useState<'life' | 'property_casualty'>('life')
   const [documentType, setDocumentType] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: "Hi! I'm your AI assistant. I've analyzed this document and can help answer any questions you have about it.",
-      sender: 'ai',
-      timestamp: new Date()
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [scale, setScale] = useState(1.0)
@@ -360,7 +356,7 @@ export function JobPage({ jobId }: JobPageProps) {
 
     setIsFetchingPdfUrl(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs/${jobId}/document-url`);
+      const response = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/jobs/${jobId}/document-url`);
       if (!response.ok) {
         throw new Error('Failed to fetch document URL');
       }
@@ -379,14 +375,14 @@ export function JobPage({ jobId }: JobPageProps) {
   const fetchJobDetailsAndUpdateState = useCallback(async (isPolling = false) => {
     if (!isPolling) {
       setIsLoadingJobDetails(true);
-      setCurrentPhase('Loading Job Details...');
-      setPhaseDetails('Fetching the latest information...');
+      setCurrentPhase(t('jobPage.loadingJobDetails'));
+      setPhaseDetails(t('jobPage.fetchingLatestInfo'));
     } else {
       console.log("Polling job status...");
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs/${jobId}`, {
+      const response = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/jobs/${jobId}`, {
       });
 
       if (!response.ok) {
@@ -639,8 +635,8 @@ export function JobPage({ jobId }: JobPageProps) {
 
       if (statusInfo) {
         setCurrentStep(statusInfo.step);
-        setCurrentPhase(statusInfo.phase);
-        setPhaseDetails(statusInfo.details);
+        setCurrentPhase(t(statusInfo.phaseKey));
+        setPhaseDetails(t(statusInfo.detailsKey));
 
         // Handle polling logic based on status
         if (statusKey === 'COMPLETE') {
@@ -670,8 +666,8 @@ export function JobPage({ jobId }: JobPageProps) {
         // Fallback for unknown statuses
         console.warn(`Unknown status received: ${jobApiData.status}`);
         setCurrentStep(1);
-        setCurrentPhase('Processing');
-        setPhaseDetails(`Status: ${jobApiData.status}`);
+        setCurrentPhase(t('jobPage.status.processing'));
+        setPhaseDetails(t('jobPage.status.unknownStatus', { status: jobApiData.status }));
         
         // Continue polling for unknown statuses (assume they're in-progress)
         if (!pollingIntervalRef.current) {
@@ -688,7 +684,7 @@ export function JobPage({ jobId }: JobPageProps) {
       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred.";
       setErrorOriginal(errorMsg);
       setShowError(true);
-      setCurrentPhase('Error');
+      setCurrentPhase(t('jobPage.status.error.phase'));
       setPhaseDetails(errorMsg.substring(0,100));
        if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -737,17 +733,17 @@ export function JobPage({ jobId }: JobPageProps) {
   useEffect(() => {
     if (analysisData?.insurance_type) {
       const type = analysisData.insurance_type;
-      let greeting = "Hi! I'm your AI assistant. I've analyzed this document and can help answer any questions you have about it.";
+      let greeting = t('jobPage.chat.greeting');
       if (type === 'property_casualty') {
-        greeting = "Hello! I'm your Property & Casualty insurance underwriting assistant. I've analyzed this document and can help with questions about property details, risk factors, and coverage considerations.";
+        greeting = t('jobPage.chat.greetingPropertyCasualty');
       } else if (type === 'life') {
-        greeting = "Hello! I'm your Life Insurance underwriting assistant. I've analyzed this document and can help with questions about medical history, risk factors, and policy considerations.";
+        greeting = t('jobPage.chat.greetingLife');
       }
       setMessages([{ id: '1', text: greeting, sender: 'ai', timestamp: new Date() }]);
     } else if (!isLoadingJobDetails && !analysisData?.insurance_type) {
-        setMessages([{ id: '1', text: "Hi! I'm your AI assistant. How can I help with this document?", sender: 'ai', timestamp: new Date() }]);
+        setMessages([{ id: '1', text: t('jobPage.chat.greetingGeneric'), sender: 'ai', timestamp: new Date() }]);
     }
-  }, [analysisData?.insurance_type, isLoadingJobDetails]);
+  }, [analysisData?.insurance_type, isLoadingJobDetails, t]);
 
   const onDocumentLoadSuccess = ({ numPages: loadedNumPages }: { numPages: number }) => {
     setNumPagesState(loadedNumPages);
@@ -822,7 +818,53 @@ export function JobPage({ jobId }: JobPageProps) {
     );
   };
 
-  
+  const renderUnderwriterAnalysis = () => {
+    const localAnalysisData = analysisData;
+    if (!localAnalysisData?.underwriter_analysis) {
+      if (isLoadingJobDetails || currentPhase !== 'Complete') return <p>Loading underwriter analysis...</p>;
+      return <p>No underwriter analysis available.</p>;
+    }
+    
+    interface SectionConfigItem {
+      key: keyof UnderwriterAnalysis;
+      icon: any;
+      title: string;
+    }
+
+    const sectionConfig: SectionConfigItem[] = localAnalysisData.insurance_type === 'property_casualty' 
+      ? [
+          { key: 'RISK_ASSESSMENT', icon: faClipboardCheck, title: 'Risk Assessment' }, 
+          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
+          { key: 'PROPERTY_ASSESSMENT', icon: faHome, title: 'Property Assessment' }, 
+          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
+        ]
+      : [
+          { key: 'RISK_ASSESSMENT', icon: faBriefcaseMedical, title: 'Risk Assessment' }, 
+          { key: 'DISCREPANCIES', icon: faClipboardList, title: 'Discrepancies' }, 
+          { key: 'MEDICAL_TIMELINE', icon: faHistory, title: 'Medical Timeline' }, 
+          { key: 'FINAL_RECOMMENDATION', icon: faCheckCircle, title: 'Final Recommendation' } 
+        ];
+    
+    return (
+      <div className="underwriter-analysis">
+        {sectionConfig.map((item) => {
+          const content = localAnalysisData.underwriter_analysis[item.key];
+          if (!content || content === "Not available.") return null;
+          if (item.key === 'MEDICAL_TIMELINE' && localAnalysisData.insurance_type !== 'life') return null;
+          if (item.key === 'PROPERTY_ASSESSMENT' && localAnalysisData.insurance_type !== 'property_casualty') return null;
+
+          return (
+            <div key={item.key} className="analysis-section">
+              <h3><FontAwesomeIcon icon={item.icon} /> {item.title}</h3>
+              <div className="analysis-content">
+                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{...customMarkdownComponentsFromStyles, a: ({href, children}) => (<PageReference pageNum={href?.replace("/page/","") || "1"} text={children as string}/>) }}>{content}</ReactMarkdown>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderDetection = () => {
     if (!detection) return <p>No detection results.</p>
@@ -955,7 +997,7 @@ export function JobPage({ jobId }: JobPageProps) {
     setMessages(updatedMessages); setNewMessage(''); setIsTyping(true);
     try {
       const messagesToSend = updatedMessages.filter(msg => msg.id !== '1');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/${jobId}`, {
+      const response = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/chat/${jobId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: messagesToSend })
       });
@@ -964,7 +1006,7 @@ export function JobPage({ jobId }: JobPageProps) {
       const aiMessage: Message = { id: (Date.now() + 1).toString(), text: data.response, sender: 'ai', timestamp: new Date()};
       setMessages(prev => [...prev, aiMessage]);
     } catch (err) {
-      setMessages(prev => [...prev, {id: (Date.now() + 1).toString(), text: "Chat error. Please try again.", sender: 'ai', timestamp: new Date()}]);
+      setMessages(prev => [...prev, {id: (Date.now() + 1).toString(), text: t('jobPage.chat.error'), sender: 'ai', timestamp: new Date()}]);
     } finally { setIsTyping(false); }
   };
 
@@ -1128,8 +1170,8 @@ export function JobPage({ jobId }: JobPageProps) {
             <div style={{ position: 'relative', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
               <Split 
                 className="split-view"
-                sizes={isAnalysisPanelOpen ? [50, 50] : [100, 0]}
-                minSize={isAnalysisPanelOpen ? [300,300] : [0,0] }
+                sizes={isAnalysisPanelOpen ? [40, 60] : [100, 0]}
+                minSize={isAnalysisPanelOpen ? [250, 400] : [0, 0] }
                 gutterSize={10}
                 direction="horizontal"
                 style={{ display: 'flex', flexGrow: 1, height: 'calc(100vh - 200px)' }}
@@ -1192,26 +1234,29 @@ export function JobPage({ jobId }: JobPageProps) {
                 <div className={`analysis-viewer ${!isAnalysisPanelOpen ? 'collapsed' : ''}`}>
                   <div className="tabs">
                     <button className={`tab-button ${activeTab === 'grouped' ? 'active' : ''}`} onClick={() => setActiveTab('grouped')}>
-                      <FontAwesomeIcon icon={faList} /> Document Analysis
-            </button>
+                      <FontAwesomeIcon icon={faList} /> {t('jobPage.tabs.documentAnalysis')}
+                    </button>
+                    <button className={`tab-button ${activeTab === 'underwriter' ? 'active' : ''}`} onClick={() => setActiveTab('underwriter')}>
+                      <FontAwesomeIcon icon={faUserMd} /> {t('jobPage.tabs.underwriter')}
+                    </button>
                     <button className={`tab-button ${activeTab === 'detection' ? 'active' : ''}`} onClick={() => setActiveTab('detection')}>
-                      <FontAwesomeIcon icon={faClipboardCheck} /> Impairment Detection Agent
-            </button>
-                    
+                      <FontAwesomeIcon icon={faClipboardCheck} /> {t('jobPage.tabs.impairments')}
+                    </button>
                     <button className={`tab-button ${activeTab === 'scoring' ? 'active' : ''}`} onClick={() => setActiveTab('scoring')}>
-                      <FontAwesomeIcon icon={faCheckCircle} /> Scoring Agent
-            </button>
+                      <FontAwesomeIcon icon={faCheckCircle} /> {t('jobPage.tabs.scoring')}
+                    </button>
                     <button className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-                      <FontAwesomeIcon icon={faComments} /> Chat Assistant
+                      <FontAwesomeIcon icon={faComments} /> {t('jobPage.tabs.chat')}
                       {analysisData?.insurance_type && (
                         <span className={`chat-type-indicator ${analysisData.insurance_type === 'property_casualty' ? 'p-and-c' : 'life'}`}>
-                          {analysisData.insurance_type === 'property_casualty' ? 'P&C' : 'Life'}
+                          {analysisData.insurance_type === 'property_casualty' ? t('common.propertyAndCasualty') : t('common.life')}
                         </span>
                       )}
-            </button>
+                    </button>
                   </div>
                   <div className="tab-content">
                     {activeTab === 'grouped' && renderGroupedAnalysis()}
+                    {activeTab === 'underwriter' && renderUnderwriterAnalysis()}
                     {activeTab === 'detection' && renderDetection()}
                     
                     {activeTab === 'scoring' && renderScoring()}
@@ -1220,17 +1265,17 @@ export function JobPage({ jobId }: JobPageProps) {
                         <div className="chat-messages">
                           {messages.map(message => (
                             <div key={message.id} className={`chat-message ${message.sender}`}>
-                              <div className={`chat-avatar ${message.sender}`}>{message.sender === 'user' ? 'U' : 'AI'}</div>
+                              <div className={`chat-avatar ${message.sender}`}>{message.sender === 'user' ? t('jobPage.chat.userAvatar') : t('jobPage.chat.aiAvatar')}</div>
                               <div className="chat-bubble">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{...customMarkdownComponentsFromStyles, a: ({href, children}) => (<PageReference pageNum={href?.replace("/page/","") || "1"} text={children as string}/>) }}>{message.text}</ReactMarkdown>
                               </div>
                     </div>
                 ))}
-                          {isTyping && (<div className="chat-message ai"><div className="chat-avatar ai">AI</div><div className="chat-bubble">Typing...</div></div>)}
+                          {isTyping && (<div className="chat-message ai"><div className="chat-avatar ai">{t('jobPage.chat.aiAvatar')}</div><div className="chat-bubble">{t('jobPage.chat.typing')}</div></div>)}
                         </div>
                         <form className="chat-input-form" onSubmit={handleSendMessage}>
-                          <textarea className="chat-input" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Ask me anything about the document..." rows={1} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e);}}}/>
-                          <button type="submit" className="chat-send" disabled={!newMessage.trim() || isTyping}>Send</button>
+                          <textarea className="chat-input" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={t('jobPage.chat.placeholder')} rows={1} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e);}}}/>
+                          <button type="submit" className="chat-send" disabled={!newMessage.trim() || isTyping}>{t('jobPage.chat.send')}</button>
                         </form>
                     </div>
                 )}

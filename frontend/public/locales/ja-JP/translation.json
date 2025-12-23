@@ -1,0 +1,322 @@
+{
+  "common": {
+    "upload": "アップロード",
+    "cancel": "キャンセル",
+    "submit": "送信",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功",
+    "life": "生命",
+    "propertyAndCasualty": "損保",
+    "andMore": "その他",
+    "switchingLanguage": "言語を切り替えています...",
+    "selectLanguage": "言語を選択",
+    "currentLanguage": "現在の言語: {{language}}",
+    "availableLanguages": "利用可能な言語",
+    "selected": "選択済み"
+  },
+  "header": {
+    "title": "GenAI 引受ワークベンチ",
+    "uploadNew": "新規アップロード",
+    "viewAllJobs": "すべてのジョブを表示",
+    "underwritingManual": "引受マニュアル"
+  },
+  "upload": {
+    "title": "ドキュメントをアップロード",
+    "selectFiles": "クリックしてファイルを選択",
+    "dragDrop": "またはPDFファイルをここにドラッグ＆ドロップ",
+    "multipleFiles": "複数のPDFファイルを一度に選択できます",
+    "analyzing": "{{count}} 件のドキュメントを分析",
+    "analyzing_plural": "{{count}} 件のドキュメントを分析",
+    "uploadSuccess": "アップロードに成功しました",
+    "uploadFailed": "アップロードに失敗しました: {{error}}",
+    "uploading": "アップロード中...",
+    "gettingUploadUrl": "アップロードURLを取得中...",
+    "uploadingToS3": "S3にアップロード中...",
+    "gettingUploadUrls": "アップロードURLsを取得中...",
+    "selectedFiles": "選択されたファイル ({{count}})",
+    "streamlineLife": "生命保険引受業務を効率化",
+    "streamlinePropertyCasualty": "損害保険引受業務を効率化",
+    "introLife": "<strong>Amazon Bedrock</strong>と<strong>Claude Haiku 4.5</strong>を活用した高度なAI分析により、複雑な生命保険申請書と医療文書を実用的な洞察に変換します。生命保険引受人向けに特別に構築され、申請パケットからリスク要因を自動的に抽出、分析、評価します。",
+    "introPropertyCasualty": "<strong>Amazon Bedrock</strong>と<strong>Claude Haiku 4.5</strong>を活用した高度なAI分析により、複雑な損害保険申請書とACORDフォームを実用的な洞察に変換します。損害保険引受人向けに特別に構築され、申請パケットから財産リスク要因を自動的に抽出、分析、評価します。",
+    "documentAnalysis": "ドキュメント分析",
+    "underwriterAnalysis": "引受人分析",
+    "propertyAssessmentTitle": "財産評価",
+    "interactiveAssistant": "インタラクティブアシスタント",
+    "supportedDocuments": "サポートされているドキュメント"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "完全な生命保険申請パケットを処理",
+        "item2": "医療履歴とリスク要因を抽出",
+        "item3": "APSと検査報告書の自動分類"
+      },
+      "underwriterAnalysis": {
+        "item1": "AI駆動の死亡リスク評価",
+        "item2": "医療履歴タイムラインの構築",
+        "item3": "ドキュメント間の不一致の相互参照",
+        "item4": "自動医療状態評価"
+      },
+      "interactiveAssistant": {
+        "item1": "複雑な医療履歴の照会",
+        "item2": "保険関連の詳細への即座のアクセス",
+        "item3": "複数ドキュメント申請のナビゲート"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "完全な損害保険申請パケットを処理",
+        "item2": "財産の詳細とリスク要因を抽出",
+        "item3": "ACORDフォームの自動分類"
+      },
+      "propertyAssessment": {
+        "item1": "AI駆動の財産リスク評価",
+        "item2": "詳細な財産特性分析",
+        "item3": "ドキュメント間の不一致の相互参照",
+        "item4": "環境および地理的リスク評価"
+      },
+      "interactiveAssistant": {
+        "item1": "財産の詳細とリスク要因の照会",
+        "item2": "保険関連の詳細への即座のアクセス",
+        "item3": "複雑なACORDフォームのナビゲート"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "生命保険申請書",
+      "aps": "主治医声明書 (APS)",
+      "labReports": "検査報告書",
+      "pharmacyRecords": "薬局記録",
+      "financialDisclosures": "財務開示",
+      "medicalQuestionnaires": "医療履歴アンケート",
+      "supplementalForms": "補足フォーム"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "ACORDフォーム",
+      "propertyInspections": "財産検査",
+      "claimsHistory": "請求履歴",
+      "propertyValuations": "財産評価",
+      "floodZoneCertificates": "洪水ゾーン証明書",
+      "buildingCodeCompliance": "建築基準法遵守",
+      "securityDocumentation": "セキュリティ文書"
+    }
+  },
+  "insuranceType": {
+    "life": "生命保険",
+    "propertyAndCasualty": "損害保険",
+    "selectType": "保険の種類"
+  },
+  "jobs": {
+    "title": "引受ジョブ",
+    "noJobs": "まだドキュメントをアップロードしていません。",
+    "uploadFirst": "最初のドキュメントをアップロード",
+    "loading": "ジョブを読み込み中...",
+    "fetchError": "ジョブの取得に失敗しました",
+    "tryAgain": "再試行",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "完了",
+      "inProgress": "進行中",
+      "failed": "失敗"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "リスク評価",
+    "discrepancies": "不一致",
+    "medicalTimeline": "医療タイムライン",
+    "propertyAssessment": "財産評価",
+    "finalRecommendation": "最終推奨事項"
+  },
+  "chat": {
+    "title": "AIアシスタントとチャット",
+    "placeholder": "このドキュメントについて質問してください...",
+    "send": "送信",
+    "thinking": "考え中..."
+  },
+  "errors": {
+    "pdfOnly": "PDFファイルのみを選択してください。無効なファイル: {{files}}",
+    "selectFile": "少なくとも1つのファイルを選択してください",
+    "uploadFailed": "アップロードに失敗しました",
+    "unauthorized": "未承認: APIアクセスが拒否されました",
+    "fetchFailed": "データの取得に失敗しました",
+    "unauthorizedUploadUrl": "未承認: アップロードURL生成のAPIアクセスが拒否されました。",
+    "failedUploadUrl": "アップロードURLの取得に失敗しました。",
+    "invalidUploadResponse": "アップロードURL生成エンドポイントからの無効な応答。",
+    "s3UploadFailed": "{{filename}}のS3アップロードに失敗しました: {{error}}",
+    "unauthorizedBatchUpload": "未承認: バッチアップロードのAPIアクセスが拒否されました。",
+    "failedBatchUploadUrls": "バッチアップロードURLsの取得に失敗しました。",
+    "invalidBatchResponse": "バッチアップロードエンドポイントからの無効な応答。",
+    "noUploadUrlForFile": "{{filename}}のアップロードURLが見つかりません"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "分析レポートをダウンロード",
+      "pdf": "PDFをダウンロード",
+      "generating": "生成中..."
+    },
+    "loadingJobDetails": "ジョブ詳細を読み込み中...",
+    "fetchingLatestInfo": "最新情報を取得中...",
+    "errorOccurred": "エラーが発生しました",
+    "retry": "再試行",
+    "processingJob": "ジョブ {{jobId}} を処理中...",
+    "howItWorks": "使い方",
+    "previous": "前へ",
+    "next": "次へ",
+    "page": "ページ",
+    "of": "/",
+    "print": "PDFを印刷",
+    "refresh": "データを更新",
+    "hideAnalysis": "分析を隠す",
+    "showAnalysis": "分析を表示",
+    "loadingDocument": "ドキュメントを読み込み中...",
+    "pdfPlaceholder": "分析完了後、PDFドキュメントがここに表示されます。",
+    "loadingPdf": "PDFを読み込み中...",
+    "errorLoadingPdf": "PDFの読み込み中にエラーが発生しました。",
+    "tabs": {
+      "documentAnalysis": "データ抽出",
+      "documentAnalysis": "ドキュメント分析",
+      "impairmentDetection": "障害検出エージェント",
+      "scoring": "スコアリングエージェント",
+      "chatAssistant": "チャットアシスタント"
+    },
+    "sections": {
+      "uwScore": "引受スコア",
+      "riskAssessment": "リスク評価",
+      "detectedImpairments": "検出された障害",
+      "discrepancies": "相違点",
+      "medicalTimeline": "医療タイムライン",
+      "propertyAssessment": "物件評価",
+      "finalRecommendation": "最終推奨"
+    },
+    "toggle": {
+      "showRawData": "文書分析を表示"
+    },
+    "analysis": {
+      "loading": "分析を読み込み中...",
+      "noData": "分析データがありません。",
+      "noImpairments": "障害は検出されませんでした。",
+      "noDiscrepancies": "相違点は見つかりませんでした。",
+      "evidence": "証拠",
+      "scoringFactors": "スコアリング要因",
+      "viewManual": "マニュアルを見る",
+      "recommendedActions": "推奨アクション",
+      "noActions": "推奨アクションはありません。"
+    },
+    "documentAnalysis": {
+      "loading": "ドキュメント分析セクションを読み込み中...",
+      "noData": "ドキュメントページの分析データがありません。",
+      "uncategorized": "未分類"
+    },
+    "detection": {
+      "noResults": "検出結果がありません。",
+      "noImpairments": "障害は検出されませんでした。",
+      "summaryNarrative": "要約説明",
+      "detectedImpairments": "検出された障害",
+      "impairment": "障害",
+      "evidence": "証拠",
+      "scoringFactors": "スコアリング要素",
+      "discrepancies": "不一致",
+      "viewGuidelines": "{{name}}のガイドラインを表示"
+    },
+    "scoring": {
+      "noResults": "スコアリング結果がありません。",
+      "noImpairments": "スコアリングされた障害はありません。",
+      "overallScore": "総合スコア",
+      "impairmentScores": "障害スコア",
+      "reason": "理由"
+    },
+    "chat": {
+      "greeting": "こんにちは！AIアシスタントです。このドキュメントを分析しました。ご質問にお答えします。",
+      "greetingPropertyCasualty": "こんにちは！損害保険引受アシスタントです。このドキュメントを分析しました。物件の詳細、リスク要因、補償に関するご質問にお答えします。",
+      "greetingLife": "こんにちは！生命保険引受アシスタントです。このドキュメントを分析しました。病歴、リスク要因、保険に関するご質問にお答えします。",
+      "greetingGeneric": "こんにちは！AIアシスタントです。何かお手伝いできますか？",
+      "placeholder": "ドキュメントについて何でも質問してください...",
+      "send": "送信",
+      "typing": "入力中...",
+      "error": "チャットエラー。もう一度お試しください。",
+      "userAvatar": "ユ",
+      "aiAvatar": "AI"
+    },
+    "agentAction": {
+      "title": "AIエージェント操作完了",
+      "subtitle": "AIエージェントがドキュメントを処理し、アクションを実行しました",
+      "close": "通知を閉じる",
+      "emailSent": "メール送信完了！",
+      "emailSentDetails": "エージェントがドキュメント分析に基づいてメールを送信しました。",
+      "applicationReviewed": "申請審査完了：",
+      "applicationReviewedDetails": "エージェントがこの申請には審査が必要と判断しました。",
+      "actionTaken": "アクション状態：",
+      "actionTakenDetails": "エージェントがこのドキュメントの処理を完了しました。",
+      "viewDetails": "詳細を表示"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "申請審査完了",
+      "applicationStatus": "申請状況：",
+      "riskFactorsIdentified": "特定されたリスク要因：",
+      "discrepanciesFound": "発見された不一致：",
+      "finalRecommendation": "最終推奨",
+      "recommendationDetails": "推奨事項の詳細",
+      "low": "低：",
+      "medium": "中：",
+      "high": "高：",
+      "ineligible": "不適格",
+      "eligible": "適格",
+      "approved": "承認済み",
+      "declined": "却下",
+      "pendingReview": "審査待ち",
+      "referForReview": "審査付託",
+      "documentsRequested": "書類要求済み",
+      "pages": "ページ："
+    },
+    "status": {
+      "created": {
+        "phase": "ジョブ作成完了",
+        "details": "ジョブが作成され、ドキュメントのアップロード完了を待機しています..."
+      },
+      "uploadPending": {
+        "phase": "アップロード待機中",
+        "details": "ドキュメントのアップロードが完了し、処理キューに追加されています..."
+      },
+      "classifying": {
+        "phase": "ドキュメント分類中",
+        "details": "AIがドキュメントのタイプと構造を分析し、最適な処理を行っています..."
+      },
+      "extracting": {
+        "phase": "情報抽出中",
+        "details": "高度なAIモデルがドキュメントを読み取り、重要な情報とデータポイントを抽出しています..."
+      },
+      "detecting": {
+        "phase": "障害検出中",
+        "details": "AIが障害と必要なスコアリング要素を特定しています..."
+      },
+      "scoring": {
+        "phase": "障害スコアリング中",
+        "details": "AIが障害の小計と総合スコアを計算しています..."
+      },
+      "analyzing": {
+        "phase": "コンテンツ分析中",
+        "details": "引受AIがリスク、不一致、洞察を特定するための包括的な分析を実行しています..."
+      },
+      "acting": {
+        "phase": "アクション実行中",
+        "details": "AIエージェントが分析結果に基づいて判断を下し、適切なアクションを実行しています..."
+      },
+      "complete": {
+        "phase": "完了",
+        "details": "分析完了！下記の詳細結果とAIの推奨事項をご確認ください。"
+      },
+      "failed": {
+        "phase": "失敗",
+        "details": "処理中にエラーが発生しました。もう一度お試しいただくか、サポートにお問い合わせください。"
+      },
+      "error": {
+        "phase": "エラー",
+        "details": "処理中にエラーが発生しました。もう一度お試しいただくか、サポートにお問い合わせください。"
+      },
+      "processing": "処理中",
+      "unknownStatus": "ステータス: {{status}}"
+    }
+  }
+}
