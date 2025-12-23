@@ -1,0 +1,322 @@
+{
+  "common": {
+    "upload": "Téléverser",
+    "cancel": "Annuler",
+    "submit": "Soumettre",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "life": "Vie",
+    "propertyAndCasualty": "IARD",
+    "andMore": "Et Plus",
+    "switchingLanguage": "Changement de langue...",
+    "selectLanguage": "Sélectionner la langue",
+    "currentLanguage": "Langue actuelle: {{language}}",
+    "availableLanguages": "Langues disponibles",
+    "selected": "Sélectionné"
+  },
+  "header": {
+    "title": "Poste de Travail de Souscription GenAI",
+    "uploadNew": "Téléverser Nouveau",
+    "viewAllJobs": "Voir Tous les Travaux",
+    "underwritingManual": "Manuel de Souscription"
+  },
+  "upload": {
+    "title": "Téléverser des Documents",
+    "selectFiles": "Cliquez pour sélectionner des fichiers",
+    "dragDrop": "ou glissez-déposez des fichiers PDF ici",
+    "multipleFiles": "Vous pouvez sélectionner plusieurs fichiers PDF à la fois",
+    "analyzing": "Analyser {{count}} Document",
+    "analyzing_plural": "Analyser {{count}} Documents",
+    "uploadSuccess": "Téléversé avec succès",
+    "uploadFailed": "Échec du téléversement: {{error}}",
+    "uploading": "Téléversement en cours...",
+    "gettingUploadUrl": "Obtention de l'URL de téléversement...",
+    "uploadingToS3": "Téléversement vers S3...",
+    "gettingUploadUrls": "Obtention des URLs de téléversement...",
+    "selectedFiles": "Fichiers Sélectionnés ({{count}})",
+    "streamlineLife": "Rationalisez Votre Souscription d'Assurance Vie",
+    "streamlinePropertyCasualty": "Rationalisez Votre Souscription d'Assurance IARD",
+    "introLife": "Transformez les demandes d'assurance vie complexes et les documents médicaux en informations exploitables grâce à une analyse IA avancée alimentée par <strong>Amazon Bedrock</strong> et <strong>Claude Haiku 4.5</strong>. Conçu spécifiquement pour les souscripteurs d'assurance vie afin d'extraire, d'analyser et d'évaluer automatiquement les facteurs de risque des dossiers de demande.",
+    "introPropertyCasualty": "Transformez les demandes d'assurance IARD complexes et les formulaires ACORD en informations exploitables grâce à une analyse IA avancée alimentée par <strong>Amazon Bedrock</strong> et <strong>Claude Haiku 4.5</strong>. Conçu spécifiquement pour les souscripteurs d'assurance IARD afin d'extraire, d'analyser et d'évaluer automatiquement les facteurs de risque immobilier des dossiers de demande.",
+    "documentAnalysis": "Analyse de Documents",
+    "underwriterAnalysis": "Analyse du Souscripteur",
+    "propertyAssessmentTitle": "Évaluation de la Propriété",
+    "interactiveAssistant": "Assistant Interactif",
+    "supportedDocuments": "Documents Pris en Charge"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "Traiter les dossiers complets de demande d'assurance vie",
+        "item2": "Extraire l'historique médical et les facteurs de risque",
+        "item3": "Classification automatique des APS et des rapports de laboratoire"
+      },
+      "underwriterAnalysis": {
+        "item1": "Évaluation du risque de mortalité pilotée par l'IA",
+        "item2": "Construction de la chronologie de l'historique médical",
+        "item3": "Références croisées des divergences entre documents",
+        "item4": "Évaluation automatique des conditions médicales"
+      },
+      "interactiveAssistant": {
+        "item1": "Interroger les historiques médicaux complexes",
+        "item2": "Accès instantané aux détails pertinents de la police",
+        "item3": "Naviguer dans les demandes multi-documents"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "Traiter les dossiers complets de demande d'assurance IARD",
+        "item2": "Extraire les détails de la propriété et les facteurs de risque",
+        "item3": "Classification automatique des formulaires ACORD"
+      },
+      "propertyAssessment": {
+        "item1": "Évaluation du risque immobilier pilotée par l'IA",
+        "item2": "Analyse détaillée des caractéristiques de la propriété",
+        "item3": "Références croisées des divergences entre documents",
+        "item4": "Évaluation des risques environnementaux et géographiques"
+      },
+      "interactiveAssistant": {
+        "item1": "Interroger les détails de la propriété et les facteurs de risque",
+        "item2": "Accès instantané aux détails pertinents de la police",
+        "item3": "Naviguer dans les formulaires ACORD complexes"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "Demandes d'Assurance Vie",
+      "aps": "Déclarations de Médecin Traitant (APS)",
+      "labReports": "Rapports de Laboratoire",
+      "pharmacyRecords": "Dossiers de Pharmacie",
+      "financialDisclosures": "Divulgations Financières",
+      "medicalQuestionnaires": "Questionnaires d'Historique Médical",
+      "supplementalForms": "Formulaires Supplémentaires"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "Formulaires ACORD",
+      "propertyInspections": "Inspections de Propriété",
+      "claimsHistory": "Historique des Réclamations",
+      "propertyValuations": "Évaluations de Propriété",
+      "floodZoneCertificates": "Certificats de Zone Inondable",
+      "buildingCodeCompliance": "Conformité au Code du Bâtiment",
+      "securityDocumentation": "Documentation de Sécurité"
+    }
+  },
+  "insuranceType": {
+    "life": "Assurance Vie",
+    "propertyAndCasualty": "Assurance IARD",
+    "selectType": "Type d'Assurance"
+  },
+  "jobs": {
+    "title": "Travaux de Souscription",
+    "noJobs": "Vous n'avez pas encore téléversé de documents.",
+    "uploadFirst": "Téléversez Votre Premier Document",
+    "loading": "Chargement des travaux...",
+    "fetchError": "Échec de la récupération des travaux",
+    "tryAgain": "Réessayer",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "Terminé",
+      "inProgress": "En Cours",
+      "failed": "Échoué"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "Évaluation des Risques",
+    "discrepancies": "Divergences",
+    "medicalTimeline": "Chronologie Médicale",
+    "propertyAssessment": "Évaluation de la Propriété",
+    "finalRecommendation": "Recommandation Finale"
+  },
+  "chat": {
+    "title": "Clavardage avec l'Assistant IA",
+    "placeholder": "Posez une question sur ce document...",
+    "send": "Envoyer",
+    "thinking": "Réflexion..."
+  },
+  "errors": {
+    "pdfOnly": "Veuillez sélectionner uniquement des fichiers PDF. Fichiers invalides: {{files}}",
+    "selectFile": "Veuillez sélectionner au moins un fichier",
+    "uploadFailed": "Échec du téléversement",
+    "unauthorized": "Non autorisé: Accès API refusé",
+    "fetchFailed": "Échec de la récupération des données",
+    "unauthorizedUploadUrl": "Non autorisé: Accès API refusé pour la génération d'URL de téléversement.",
+    "failedUploadUrl": "Échec de l'obtention de l'URL de téléversement.",
+    "invalidUploadResponse": "Réponse invalide du point de terminaison de génération d'URL de téléversement.",
+    "s3UploadFailed": "Échec du téléversement S3 pour {{filename}}: {{error}}",
+    "unauthorizedBatchUpload": "Non autorisé: Accès API refusé pour le téléversement par lots.",
+    "failedBatchUploadUrls": "Échec de l'obtention des URLs de téléversement par lots.",
+    "invalidBatchResponse": "Réponse invalide du point de terminaison de téléversement par lots.",
+    "noUploadUrlForFile": "Aucune URL de téléversement trouvée pour {{filename}}"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "Télécharger le Rapport d'Analyse",
+      "pdf": "Télécharger PDF",
+      "generating": "Génération..."
+    },
+    "loadingJobDetails": "Chargement des Détails du Travail...",
+    "fetchingLatestInfo": "Récupération des dernières informations...",
+    "errorOccurred": "Une Erreur s'est Produite",
+    "retry": "Réessayer",
+    "processingJob": "Traitement du Travail {{jobId}}...",
+    "howItWorks": "Comment Ça Marche",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "page": "Page",
+    "of": "de",
+    "print": "Imprimer PDF",
+    "refresh": "Actualiser les Données",
+    "hideAnalysis": "Masquer l'Analyse",
+    "showAnalysis": "Afficher l'Analyse",
+    "loadingDocument": "Chargement du Document...",
+    "pdfPlaceholder": "Le document PDF apparaîtra ici une fois l'analyse terminée.",
+    "loadingPdf": "Chargement du PDF...",
+    "errorLoadingPdf": "Erreur lors du chargement du PDF.",
+    "tabs": {
+      "documentAnalysis": "Extraction de Données",
+      "documentAnalysis": "Analyse de Documents",
+      "impairmentDetection": "Agent de Détection des Déficiences",
+      "scoring": "Agent de Notation",
+      "chatAssistant": "Assistant de Clavardage"
+    },
+    "sections": {
+      "uwScore": "Score de Souscription",
+      "riskAssessment": "Évaluation des Risques",
+      "detectedImpairments": "Déficiences Détectées",
+      "discrepancies": "Écarts",
+      "medicalTimeline": "Chronologie Médicale",
+      "propertyAssessment": "Évaluation de la Propriété",
+      "finalRecommendation": "Recommandation Finale"
+    },
+    "toggle": {
+      "showRawData": "Afficher l'Analyse de Documents"
+    },
+    "analysis": {
+      "loading": "Chargement de l'analyse...",
+      "noData": "Aucune donnée d'analyse disponible.",
+      "noImpairments": "Aucune déficience détectée.",
+      "noDiscrepancies": "Aucun écart trouvé.",
+      "evidence": "Preuves",
+      "scoringFactors": "Facteurs de Notation",
+      "viewManual": "Voir le Manuel",
+      "recommendedActions": "Actions Recommandées",
+      "noActions": "Aucune action recommandée disponible."
+    },
+    "documentAnalysis": {
+      "loading": "Chargement des sections d'analyse de documents...",
+      "noData": "Aucune donnée d'analyse de page de document disponible.",
+      "uncategorized": "Non Catégorisé"
+    },
+    "detection": {
+      "noResults": "Aucun résultat de détection.",
+      "noImpairments": "Aucune déficience détectée.",
+      "summaryNarrative": "Récit Résumé",
+      "detectedImpairments": "Déficiences Détectées",
+      "impairment": "Déficience",
+      "evidence": "Preuve",
+      "scoringFactors": "Facteurs de Notation",
+      "discrepancies": "Divergences",
+      "viewGuidelines": "Voir les Directives pour {{name}}"
+    },
+    "scoring": {
+      "noResults": "Aucun résultat de notation.",
+      "noImpairments": "Aucune déficience notée.",
+      "overallScore": "Score Global",
+      "impairmentScores": "Scores de Déficiences",
+      "reason": "Raison"
+    },
+    "chat": {
+      "greeting": "Bonjour! Je suis votre assistant IA. J'ai analysé ce document et je peux vous aider à répondre à toutes vos questions à ce sujet.",
+      "greetingPropertyCasualty": "Bonjour! Je suis votre assistant de souscription d'assurance IARD. J'ai analysé ce document et je peux vous aider avec des questions sur les détails de la propriété, les facteurs de risque et les considérations de couverture.",
+      "greetingLife": "Bonjour! Je suis votre assistant de souscription d'assurance vie. J'ai analysé ce document et je peux vous aider avec des questions sur l'historique médical, les facteurs de risque et les considérations de police.",
+      "greetingGeneric": "Bonjour! Je suis votre assistant IA. Comment puis-je vous aider avec ce document?",
+      "placeholder": "Posez-moi n'importe quelle question sur le document...",
+      "send": "Envoyer",
+      "typing": "Saisie en cours...",
+      "error": "Erreur de clavardage. Veuillez réessayer.",
+      "userAvatar": "U",
+      "aiAvatar": "IA"
+    },
+    "agentAction": {
+      "title": "Action de l'Agent IA Terminée",
+      "subtitle": "Notre agent IA a traité votre document et a pris des mesures",
+      "close": "Fermer la notification",
+      "emailSent": "Courriel Envoyé!",
+      "emailSentDetails": "L'agent a envoyé un courriel basé sur l'analyse du document.",
+      "applicationReviewed": "Demande Examinée:",
+      "applicationReviewedDetails": "L'agent a déterminé que cette demande nécessite un examen.",
+      "actionTaken": "Action Prise:",
+      "actionTakenDetails": "L'agent a terminé le traitement de ce document.",
+      "viewDetails": "Voir les Détails"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "Examen de la Demande Terminé",
+      "applicationStatus": "Statut de la Demande:",
+      "riskFactorsIdentified": "Facteurs de Risque Identifiés:",
+      "discrepanciesFound": "Divergences Trouvées:",
+      "finalRecommendation": "Recommandation Finale",
+      "recommendationDetails": "Détails de la Recommandation",
+      "low": "Faible:",
+      "medium": "Moyen:",
+      "high": "Élevé:",
+      "ineligible": "NON ÉLIGIBLE",
+      "eligible": "ÉLIGIBLE",
+      "approved": "APPROUVÉ",
+      "declined": "REFUSÉ",
+      "pendingReview": "RÉVISION EN ATTENTE",
+      "referForReview": "RÉFÉRER POUR RÉVISION",
+      "documentsRequested": "DOCUMENTS DEMANDÉS",
+      "pages": "Pages:"
+    },
+    "status": {
+      "created": {
+        "phase": "Travail Créé",
+        "details": "Le travail a été créé et attend la fin du téléversement du document..."
+      },
+      "uploadPending": {
+        "phase": "Téléversement en Attente",
+        "details": "Le téléversement du document est en cours de finalisation et mis en file d'attente pour traitement..."
+      },
+      "classifying": {
+        "phase": "Classification du Document",
+        "details": "L'IA analyse le document pour déterminer son type et sa structure pour un traitement optimal..."
+      },
+      "extracting": {
+        "phase": "Extraction d'Informations",
+        "details": "Les modèles d'IA avancés lisent le document et extraient les informations clés et les points de données..."
+      },
+      "detecting": {
+        "phase": "Détection des Déficiences",
+        "details": "L'IA identifie les déficiences et les facteurs de notation requis..."
+      },
+      "scoring": {
+        "phase": "Notation des Déficiences",
+        "details": "L'IA calcule les sous-totaux de déficiences et le score global..."
+      },
+      "analyzing": {
+        "phase": "Analyse du Contenu",
+        "details": "Notre IA de souscription effectue une analyse complète pour identifier les risques, les divergences et les informations..."
+      },
+      "acting": {
+        "phase": "Prise de Mesures",
+        "details": "L'agent IA prend des décisions et des mesures appropriées basées sur les résultats de l'analyse..."
+      },
+      "complete": {
+        "phase": "Terminé",
+        "details": "Analyse terminée! Consultez les résultats détaillés et les recommandations de l'IA ci-dessous."
+      },
+      "failed": {
+        "phase": "Échoué",
+        "details": "Une erreur s'est produite pendant le traitement. Veuillez réessayer ou contacter le soutien."
+      },
+      "error": {
+        "phase": "Erreur",
+        "details": "Une erreur s'est produite pendant le traitement. Veuillez réessayer ou contacter le soutien."
+      },
+      "processing": "Traitement",
+      "unknownStatus": "Statut: {{status}}"
+    }
+  }
+}

@@ -37,7 +37,22 @@ BATCH_SIZE = 1
 DPI = 150
 MAX_DIMENSION = 8000
 
-def get_extraction_prompt(document_type, insurance_type, page_numbers, previous_analysis_json="{}"):
+
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English. All extracted field names, section headers, and values should be in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文). All extracted field names, section headers, and values should be in Simplified Chinese.',
+        'ja-JP': 'Respond in Japanese (日本語). All extracted field names, section headers, and values should be in Japanese.',
+        'es-ES': 'Respond in Spanish (Español). All extracted field names, section headers, and values should be in Spanish.',
+        'fr-FR': 'Respond in French (Français). All extracted field names, section headers, and values should be in French.',
+        'fr-CA': 'Respond in Canadian French (Français canadien). All extracted field names, section headers, and values should be in Canadian French.',
+        'de-DE': 'Respond in German (Deutsch). All extracted field names, section headers, and values should be in German.',
+        'it-IT': 'Respond in Italian (Italiano). All extracted field names, section headers, and values should be in Italian.',
+    }
+    return language_map.get(language, 'Respond in English. All extracted field names, section headers, and values should be in English.')
+
+def get_extraction_prompt(document_type, insurance_type, page_numbers, previous_analysis_json="{}", language_instruction=""):
     """Get the appropriate extraction prompt for a batch of pages, considering previous analysis."""
     
     # Base prompt
@@ -64,6 +79,7 @@ Analysis of previous pages (if any):
 - Each page object must include a `"page_number"` and all other data you extracted.
 - If a page is blank or contains no extractable information, return an object with just the page number and a note, like `{{"page_number": 1, "status": "No information found"}}`.
 - Do not include any explanations or text outside of the final JSON object.
+- IMPORTANT: {language_instruction}
 
 **Example Output Format:**
 ```json
@@ -143,9 +159,23 @@ def lambda_handler(event, context):
             update_job_status(job_id, "FAILED", error_msg)
         return {"status": "ERROR", "message": error_msg}
 
-    # --- 2) Mark EXTRACTING in DynamoDB ---
-    print(f"[extract] Step 2: Updating status to EXTRACTING, remaining_time={context.get_remaining_time_in_millis()}ms")
+    # --- 2) Mark EXTRACTING in DynamoDB and get user language ---
+    print(f"[extract] Step 2: Updating status to EXTRACTING and getting user language, remaining_time={context.get_remaining_time_in_millis()}ms")
+    user_language = 'en-US'  # Default
     if job_id and JOBS_TABLE:
+        try:
+            # Get userLanguage from DynamoDB
+            resp = dynamodb_client.get_item(
+                TableName=JOBS_TABLE,
+                Key={'jobId': {'S': job_id}},
+                ProjectionExpression='userLanguage'
+            )
+            item = resp.get('Item', {})
+            user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+            print(f"[extract] User language for job {job_id}: {user_language}")
+        except Exception as e:
+            print(f"[extract] Error reading userLanguage: {e}")
+        
         try:
             now = datetime.now(timezone.utc).isoformat()
             dynamodb_client.update_item(
@@ -239,7 +269,8 @@ def lambda_handler(event, context):
                 return {"status": "ERROR", "message": error_msg}
 
             # Build prompt & payload
-            prompt = get_extraction_prompt(doc_type, ins_type, list(range(first, last+1)), json.dumps(all_data, indent=2))
+            language_instruction = get_language_instruction(user_language)
+            prompt = get_extraction_prompt(doc_type, ins_type, list(range(first, last+1)), json.dumps(all_data, indent=2), language_instruction)
             print(f"[extract] Extraction prompt size: {len(prompt)} chars")
             messages = [{"text": prompt}]
             total_image_bytes = 0

@@ -43,6 +43,21 @@ def get_s3_client():
     return boto3.client('s3')
 
 
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文).',
+        'ja-JP': 'Respond in Japanese (日本語).',
+        'es-ES': 'Respond in Spanish (Español).',
+        'fr-FR': 'Respond in French (Français).',
+        'fr-CA': 'Respond in Canadian French (Français canadien).',
+        'de-DE': 'Respond in German (Deutsch).',
+        'it-IT': 'Respond in Italian (Italiano).',
+    }
+    return language_map.get(language, 'Respond in English.')
+
+
 def validate_analysis_data(data, schema):
     """
     Validates the structure of the data against the schema.
@@ -78,13 +93,14 @@ def _write_trace(job_id: str, trace_obj: dict) -> str | None:
     return key
 
 
-def _build_agent(insurance_type: str) -> object:
+def _build_agent(insurance_type: str, language: str = 'en-US') -> object:
     """Construct the Strands Agent with prompts/tools based on insurance type.
 
     - life: use life underwriting prompt and Bedrock KB tool
     - property_casualty: use P&C underwriting prompt and DO NOT attach KB tool
     """
     model_id = os.environ.get('BEDROCK_DETECTION_MODEL_ID', 'global.anthropic.claude-haiku-4-5-20251001-v1:0')
+    language_instruction = get_language_instruction(language)
 
     @tool
     def scratch_fixed(action: str, key: str, value=None, agent=None):
@@ -130,12 +146,13 @@ def _build_agent(insurance_type: str) -> object:
 
     LIFE_PROMPT = """You are a senior life insurance underwriter. Your job is to analyze the data stream for an application and identify impairments, 
 scoring factors (based on the knowledge base), and evidences for those impairments. 
-1. Scan the extracted datafor impairment evidence and write out an initial list of impairments.
+1. Scan the extracted data for impairment evidence and write out an initial list of impairments.
 Then for each impairment in your scratch pad, do the following:
 2. Call kb_search() once and treat the markdown returned as authoritative. Make sure to record the page numbers where you found evidence for the impairment and the knowledgebase_location for the impairment to be used in the final JSON output.
 3. Use the ratings tables in the returned markdown to determine a list of "scoring factors" are required to completely score that impairment and write them out. 
-4. Search through the XML feeds to consolidate the values for each scoring factor, and the list of evidence for that impairment. 
-5. Write out the scoring factors and evidence for that impairment.
+4. If the impairment is not found in the knowledge base, omit it from the final JSON output.
+5. Search through the XML feeds to consolidate the values for each scoring factor, and the list of evidence for that impairment. 
+6. Write out the scoring factors and evidence for that impairment.
 
 Repeat this process for each impairment you find. Deduplicate any impairment that is found in multiple XML feeds into one listng. 
 
@@ -171,6 +188,7 @@ Explanation of the JSON output:
 - discrepancies: A list of discrepancies for the impairment.
 - narrative: A high level summary of the analysis of all the impairments. Should include references to the knowledge base entries for the impairments that were used to generate the analysis. One paragraph maximum. 
 
+IMPORTANT: """ + language_instruction + """ All text content in the JSON (evidence descriptions, narratives, discrepancies) must be in this language.
    
 """
 
@@ -198,6 +216,8 @@ Return a single JSON object in this format:
   "narrative": "Brief P&C-focused summary of key risks and supporting evidence."
 }
 ```
+
+IMPORTANT: """ + language_instruction + """ All text content in the JSON (evidence descriptions, narratives) must be in this language.
 """
 
     # Configure BedrockModel with adaptive retry
@@ -219,11 +239,11 @@ Return a single JSON object in this format:
 
 
 
-def _run_agent_detection(extracted_data: dict, insurance_type: str) -> dict:
+def _run_agent_detection(extracted_data: dict, insurance_type: str, language: str = 'en-US') -> dict:
     """Run the Strands Agent and return parsed JSON result."""
     agent_start = time.time()
-    print(f"[_run_agent_detection] Building agent for insurance_type={insurance_type}")
-    agent = _build_agent(insurance_type)
+    print(f"[_run_agent_detection] Building agent for insurance_type={insurance_type}, language={language}")
+    agent = _build_agent(insurance_type, language)
     # Feed the raw JSON string directly to the agent (simpler and more faithful)
     message_str = json.dumps(extracted_data, ensure_ascii=False)
     print(f"[_run_agent_detection] Agent input message size: {len(message_str)} bytes")
@@ -347,12 +367,27 @@ def lambda_handler(event, context):
                 print(f"[lambda_handler] WARNING: Failed to get insurance type from DynamoDB: {e}")
                 insurance_type = 'property_casualty'
 
+    # Read user language preference from DynamoDB
+    user_language = 'en-US'
+    if job_id and DB_TABLE:
+        try:
+            resp = dynamodb_client.get_item(
+                TableName=DB_TABLE,
+                Key={'jobId': {'S': job_id}},
+                ProjectionExpression='userLanguage'
+            )
+            item = resp.get('Item', {})
+            user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+            print(f"[lambda_handler] User language for job {job_id}: {user_language}")
+        except Exception as e:
+            print(f"[lambda_handler] Error reading userLanguage: {e}")
+
     # --- 3) Detect impairments using Strands Agent (Bedrock KB) ---
     print(f"[lambda_handler] Step 3: Running Strands agent for impairment detection, remaining_time={context.get_remaining_time_in_millis()}ms")
     agent_raw = {}
     agent_start = time.time()
     try:
-        agent_raw = _run_agent_detection(extracted_data, insurance_type)
+        agent_raw = _run_agent_detection(extracted_data, insurance_type, user_language)
         log_timing("Agent detection", agent_start)
         print(f"[lambda_handler] Agent detection completed, impairments found: {len(agent_raw.get('impairments', []))}")
     except Exception as e:

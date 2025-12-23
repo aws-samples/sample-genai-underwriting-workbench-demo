@@ -24,6 +24,21 @@ dynamodb_client = boto3.client('dynamodb')
 
 print(f"ActLambda initializing. Target S3 Bucket for outputs: {MOCK_OUTPUT_S3_BUCKET}. Jobs Table: {JOBS_TABLE_NAME_ENV}")
 
+
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文).',
+        'ja-JP': 'Respond in Japanese (日本語).',
+        'es-ES': 'Respond in Spanish (Español).',
+        'fr-FR': 'Respond in French (Français).',
+        'fr-CA': 'Respond in Canadian French (Français canadien).',
+        'de-DE': 'Respond in German (Deutsch).',
+        'it-IT': 'Respond in Italian (Italiano).',
+    }
+    return language_map.get(language, 'Respond in English.')
+
 # --- Step 1: Define Agent Tools ---
 @tool
 def send_ineligibility_notice_tool(document_identifier: str, reason_for_ineligibility: str) -> str:
@@ -181,16 +196,20 @@ except Exception as e:
     print(f"CRITICAL: Error initializing BedrockModel: {e}")
     model = None # Set model to None if initialization fails
 
-def get_agent_system_prompt(insurance_type):
+def get_agent_system_prompt(insurance_type, language='en-US'):
     """Get the appropriate agent system prompt based on insurance type"""
     
+    language_instruction = get_language_instruction(language)
+    
     # Define common parts of the prompt
-    common_intro = """You are an AI Underwriting Assistant responsible for initial application triage. 
+    common_intro = f"""You are an AI Underwriting Assistant responsible for initial application triage. 
 Your task is to review an insurance application's extracted data (the user message will provide a 'document_identifier' and the application data) and decide on an appropriate action using ONE of the available tools.
 
 Available Tools:
 1.  `send_ineligibility_notice_tool`: Use this if the application is clearly ineligible based on the rules below.
-2.  `request_supporting_documents_tool`: Use this if the application is NOT ineligible, to request necessary supporting documents."""
+2.  `request_supporting_documents_tool`: Use this if the application is NOT ineligible, to request necessary supporting documents.
+
+IMPORTANT: {language_instruction} All text content you generate (reasons for ineligibility, email bodies, etc.) must be in this language."""
     
     # Insurance-type specific rules
     if insurance_type == "life":
@@ -279,6 +298,21 @@ def lambda_handler(event, context):
         print(f"[act] job_id={job_id}, document_type={document_type}, insurance_type={insurance_type}")
         print(f"[act] document_identifier={document_identifier}")
 
+        # Read user language preference from DynamoDB
+        user_language = 'en-US'
+        if job_id and JOBS_TABLE_NAME_ENV:
+            try:
+                resp = dynamodb_client.get_item(
+                    TableName=JOBS_TABLE_NAME_ENV,
+                    Key={'jobId': {'S': job_id}},
+                    ProjectionExpression='userLanguage'
+                )
+                item = resp.get('Item', {})
+                user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+                print(f"[act] User language for job {job_id}: {user_language}")
+            except Exception as e:
+                print(f"[act] Error reading userLanguage: {e}")
+
         # --- Update DynamoDB status to ACTING ---
         print(f"[act] Step 2: Updating status to ACTING, remaining_time={context.get_remaining_time_in_millis()}ms")
         if job_id and JOBS_TABLE_NAME_ENV:
@@ -322,7 +356,7 @@ def lambda_handler(event, context):
         print(f"[act] Agent input message size: {len(agent_input_message)} bytes")
         
         # Get the appropriate agent system prompt based on insurance type
-        agent_system_prompt = get_agent_system_prompt(insurance_type)
+        agent_system_prompt = get_agent_system_prompt(insurance_type, user_language)
         print(f"[act] Agent system prompt size: {len(agent_system_prompt)} bytes")
         
         # Initialize the agent with the insurance-type specific prompt

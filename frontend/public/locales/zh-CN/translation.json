@@ -1,0 +1,323 @@
+{
+  "common": {
+    "upload": "上传",
+    "cancel": "取消",
+    "submit": "提交",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "life": "人寿",
+    "propertyAndCasualty": "财产险",
+    "andMore": "更多",
+    "switchingLanguage": "切换语言...",
+    "selectLanguage": "选择语言",
+    "currentLanguage": "当前语言: {{language}}",
+    "availableLanguages": "可用语言",
+    "selected": "已选择"
+  },
+  "header": {
+    "title": "GenAI 承保工作台",
+    "uploadNew": "上传新文件",
+    "viewAllJobs": "查看所有任务",
+    "underwritingManual": "承保手册"
+  },
+  "upload": {
+    "title": "上传文档",
+    "selectFiles": "点击选择文件",
+    "dragDrop": "或将PDF文件拖放到此处",
+    "multipleFiles": "您可以一次选择多个PDF文件",
+    "analyzing": "分析 {{count}} 个文档",
+    "analyzing_plural": "分析 {{count}} 个文档",
+    "uploadSuccess": "上传成功",
+    "uploadFailed": "上传失败: {{error}}",
+    "uploading": "上传中...",
+    "gettingUploadUrl": "获取上传URL...",
+    "uploadingToS3": "上传到S3...",
+    "gettingUploadUrls": "获取上传URLs...",
+    "selectedFiles": "已选择文件 ({{count}})",
+    "streamlineLife": "简化您的人寿保险承保流程",
+    "streamlinePropertyCasualty": "简化您的财产和意外险承保流程",
+    "introLife": "使用由<strong>Amazon Bedrock</strong>和<strong>Claude Haiku 4.5</strong>驱动的先进AI分析，将复杂的人寿保险申请和医疗文件转化为可操作的见解。专为人寿保险承保人打造，自动提取、分析和评估申请包中的风险因素。",
+    "introPropertyCasualty": "使用由<strong>Amazon Bedrock</strong>和<strong>Claude Haiku 4.5</strong>驱动的先进AI分析，将复杂的财产和意外险申请及ACORD表格转化为可操作的见解。专为财产和意外险承保人打造，自动提取、分析和评估申请包中的财产风险因素。",
+    "documentAnalysis": "文档分析",
+    "underwriterAnalysis": "承保人分析",
+    "propertyAssessmentTitle": "财产评估",
+    "interactiveAssistant": "交互式助手",
+    "supportedDocuments": "支持的文档"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "处理完整的人寿保险申请包",
+        "item2": "提取医疗史和风险因素",
+        "item3": "自动分类APS和实验室报告"
+      },
+      "underwriterAnalysis": {
+        "item1": "AI驱动的死亡风险评估",
+        "item2": "医疗史时间线构建",
+        "item3": "跨文档交叉引用差异",
+        "item4": "自动医疗状况评估"
+      },
+      "interactiveAssistant": {
+        "item1": "查询复杂的医疗史",
+        "item2": "即时访问与保单相关的详细信息",
+        "item3": "导航多文档申请"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "处理完整的财产和意外险申请包",
+        "item2": "提取财产详情和风险因素",
+        "item3": "自动分类ACORD表格"
+      },
+      "propertyAssessment": {
+        "item1": "AI驱动的财产风险评估",
+        "item2": "详细的财产特征分析",
+        "item3": "跨文档交叉引用差异",
+        "item4": "环境和地理风险评估"
+      },
+      "interactiveAssistant": {
+        "item1": "查询财产详情和风险因素",
+        "item2": "即时访问与保单相关的详细信息",
+        "item3": "导航复杂的ACORD表格"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "人寿保险申请",
+      "aps": "主治医师声明 (APS)",
+      "labReports": "实验室报告",
+      "pharmacyRecords": "药房记录",
+      "financialDisclosures": "财务披露",
+      "medicalQuestionnaires": "医疗史问卷",
+      "supplementalForms": "补充表格"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "ACORD表格",
+      "propertyInspections": "财产检查",
+      "claimsHistory": "索赔历史",
+      "propertyValuations": "财产估值",
+      "floodZoneCertificates": "洪水区证书",
+      "buildingCodeCompliance": "建筑规范合规性",
+      "securityDocumentation": "安全文档"
+    }
+  },
+  "insuranceType": {
+    "life": "人寿保险",
+    "propertyAndCasualty": "财产和意外险",
+    "selectType": "保险类型"
+  },
+  "jobs": {
+    "title": "承保任务",
+    "noJobs": "您还没有上传任何文档。",
+    "uploadFirst": "上传您的第一个文档",
+    "loading": "加载任务中...",
+    "fetchError": "获取任务失败",
+    "tryAgain": "重试",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "已完成",
+      "inProgress": "进行中",
+      "failed": "失败"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "风险评估",
+    "discrepancies": "差异",
+    "medicalTimeline": "医疗时间线",
+    "propertyAssessment": "财产评估",
+    "finalRecommendation": "最终建议"
+  },
+  "chat": {
+    "title": "与AI助手聊天",
+    "placeholder": "询问有关此文档的问题...",
+    "send": "发送",
+    "thinking": "思考中..."
+  },
+  "errors": {
+    "pdfOnly": "请仅选择PDF文件。无效文件: {{files}}",
+    "selectFile": "请至少选择一个文件",
+    "uploadFailed": "上传失败",
+    "unauthorized": "未授权: API访问被拒绝",
+    "fetchFailed": "获取数据失败",
+    "unauthorizedUploadUrl": "未授权: 生成上传URL的API访问被拒绝。",
+    "failedUploadUrl": "获取上传URL失败。",
+    "invalidUploadResponse": "上传URL生成端点的响应无效。",
+    "s3UploadFailed": "{{filename}}的S3上传失败: {{error}}",
+    "unauthorizedBatchUpload": "未授权: 批量上传的API访问被拒绝。",
+    "failedBatchUploadUrls": "获取批量上传URLs失败。",
+    "invalidBatchResponse": "批量上传端点的响应无效。",
+    "noUploadUrlForFile": "未找到{{filename}}的上传URL"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "下载分析报告",
+      "pdf": "下载PDF",
+      "generating": "生成中..."
+    },
+    "loadingJobDetails": "加载任务详情...",
+    "fetchingLatestInfo": "获取最新信息...",
+    "errorOccurred": "发生错误",
+    "retry": "重试",
+    "processingJob": "处理任务 {{jobId}}...",
+    "howItWorks": "工作原理",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "页",
+    "of": "/",
+    "print": "打印PDF",
+    "refresh": "刷新数据",
+    "hideAnalysis": "隐藏分析",
+    "showAnalysis": "显示分析",
+    "loadingDocument": "加载文档...",
+    "pdfPlaceholder": "分析完成后，PDF文档将显示在此处。",
+    "loadingPdf": "加载PDF...",
+    "errorLoadingPdf": "加载PDF时出错。",
+    "tabs": {
+      "documentAnalysis": "数据提取",
+      "underwriter": "承保人",
+      "impairments": "损伤",
+      "scoring": "评分",
+      "chat": "聊天"
+    },
+    "sections": {
+      "uwScore": "核保评分",
+      "riskAssessment": "风险评估",
+      "detectedImpairments": "检测到的损伤",
+      "discrepancies": "差异",
+      "medicalTimeline": "医疗时间线",
+      "propertyAssessment": "财产评估",
+      "finalRecommendation": "最终建议"
+    },
+    "toggle": {
+      "showRawData": "显示文档分析"
+    },
+    "analysis": {
+      "loading": "正在加载分析...",
+      "noData": "没有可用的分析数据。",
+      "noImpairments": "未检测到损伤。",
+      "noDiscrepancies": "未发现差异。",
+      "evidence": "证据",
+      "scoringFactors": "评分因素",
+      "viewManual": "查看手册",
+      "recommendedActions": "建议操作",
+      "noActions": "没有可用的建议操作。"
+    },
+    "documentAnalysis": {
+      "loading": "加载文档分析部分...",
+      "noData": "无可用的文档页面分析数据。",
+      "uncategorized": "未分类"
+    },
+    "detection": {
+      "noResults": "无检测结果。",
+      "noImpairments": "未检测到损伤。",
+      "summaryNarrative": "摘要说明",
+      "detectedImpairments": "检测到的损伤",
+      "impairment": "损伤",
+      "evidence": "证据",
+      "scoringFactors": "评分因素",
+      "discrepancies": "差异",
+      "viewGuidelines": "查看{{name}}的指南"
+    },
+    "scoring": {
+      "noResults": "无评分结果。",
+      "noImpairments": "无损伤评分。",
+      "overallScore": "总分",
+      "impairmentScores": "损伤评分",
+      "reason": "原因"
+    },
+    "chat": {
+      "greeting": "您好！我是您的AI助手。我已分析此文档，可以帮助回答您的任何问题。",
+      "greetingPropertyCasualty": "您好！我是您的财产和意外险承保助手。我已分析此文档，可以帮助解答有关财产详情、风险因素和承保考量的问题。",
+      "greetingLife": "您好！我是您的人寿保险承保助手。我已分析此文档，可以帮助解答有关医疗史、风险因素和保单考量的问题。",
+      "greetingGeneric": "您好！我是您的AI助手。有什么可以帮助您的？",
+      "placeholder": "询问有关文档的任何问题...",
+      "send": "发送",
+      "typing": "输入中...",
+      "error": "聊天出错，请重试。",
+      "userAvatar": "用",
+      "aiAvatar": "AI"
+    },
+    "agentAction": {
+      "title": "AI代理操作完成",
+      "subtitle": "我们的AI代理已处理您的文档并采取行动",
+      "close": "关闭通知",
+      "emailSent": "邮件已发送！",
+      "emailSentDetails": "代理已根据文档分析发送了电子邮件。",
+      "applicationReviewed": "申请已审核：",
+      "applicationReviewedDetails": "代理已确定此申请需要审核。",
+      "actionTaken": "操作状态：",
+      "actionTakenDetails": "代理已完成此文档的处理。",
+      "viewDetails": "查看详情"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "申请审核完成",
+      "applicationStatus": "申请状态：",
+      "riskFactorsIdentified": "已识别的风险因素：",
+      "discrepanciesFound": "发现的差异：",
+      "finalRecommendation": "最终建议",
+      "recommendationDetails": "建议详情",
+      "low": "低：",
+      "medium": "中：",
+      "high": "高：",
+      "ineligible": "不符合资格",
+      "eligible": "符合资格",
+      "approved": "已批准",
+      "declined": "已拒绝",
+      "pendingReview": "待审核",
+      "referForReview": "转交审核",
+      "documentsRequested": "已请求文件",
+      "pages": "页面："
+    },
+    "status": {
+      "created": {
+        "phase": "任务已创建",
+        "details": "任务已创建，正在等待文档上传完成..."
+      },
+      "uploadPending": {
+        "phase": "上传待处理",
+        "details": "文档上传正在完成并排队等待处理..."
+      },
+      "classifying": {
+        "phase": "文档分类中",
+        "details": "AI正在分析文档以确定其类型和结构，以便进行最佳处理..."
+      },
+      "extracting": {
+        "phase": "提取信息中",
+        "details": "高级AI模型正在阅读文档并提取关键信息和数据点..."
+      },
+      "detecting": {
+        "phase": "检测损伤中",
+        "details": "AI正在识别损伤和所需的评分因素..."
+      },
+      "scoring": {
+        "phase": "损伤评分中",
+        "details": "AI正在计算损伤小计和总分..."
+      },
+      "analyzing": {
+        "phase": "分析内容中",
+        "details": "我们的承保AI正在进行全面分析，以识别风险、差异和见解..."
+      },
+      "acting": {
+        "phase": "执行操作中",
+        "details": "AI代理正在根据分析结果做出决策并采取适当行动..."
+      },
+      "complete": {
+        "phase": "完成",
+        "details": "分析完成！请查看下方的详细结果和AI建议。"
+      },
+      "failed": {
+        "phase": "失败",
+        "details": "处理过程中发生错误。请重试或联系支持。"
+      },
+      "error": {
+        "phase": "错误",
+        "details": "处理过程中发生错误。请重试或联系支持。"
+      },
+      "processing": "处理中",
+      "unknownStatus": "状态: {{status}}"
+    }
+  }
+}
+

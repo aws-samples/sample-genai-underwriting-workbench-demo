@@ -45,6 +45,21 @@ TRACE_BUCKET = os.environ.get('TRACE_BUCKET')
 MODEL_ID = os.environ.get('BEDROCK_SCORING_MODEL_ID', 'global.anthropic.claude-haiku-4-5-20251001-v1:0')
 
 
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文).',
+        'ja-JP': 'Respond in Japanese (日本語).',
+        'es-ES': 'Respond in Spanish (Español).',
+        'fr-FR': 'Respond in French (Français).',
+        'fr-CA': 'Respond in Canadian French (Français canadien).',
+        'de-DE': 'Respond in German (Deutsch).',
+        'it-IT': 'Respond in Italian (Italiano).',
+    }
+    return language_map.get(language, 'Respond in English.')
+
+
 def _extract_job_id(event: dict) -> str | None:
     if not isinstance(event, dict):
         return None
@@ -132,8 +147,9 @@ def calculator(values: list[float]):
         return 0
 
 
-# --- Prompt (verbatim from notebook) ---
-LIFE_PROMPT = """You are a senior life insurance underwriter specializing in risk assessment scoring. Your job is to calculate a risk score for an application based on a list of identified impairments and their scoring factors.
+def _get_life_prompt(language: str = 'en-US') -> str:
+    language_instruction = get_language_instruction(language)
+    return f"""You are a senior life insurance underwriter specializing in risk assessment scoring. Your job is to calculate a risk score for an application based on a list of identified impairments and their scoring factors.
 
 You will be given a JSON array of impairments. For each impairment in the input list, you must perform the following steps in sequence:
 
@@ -155,22 +171,27 @@ Additional Guidance:
 - When a score is between two numbers, use the lower number.
 - If no suitable rating table is found, use a score of 0.
 
+IMPORTANT: {language_instruction} The `reason` field for each impairment must be in this language.
+
 Your output must be in this exact format:
 ```json
-{
+{{
   "total_score": 100,
   "impairment_scores": [
-    {
+    {{
       "impairment_id": "hypertension",
       "sub_total": 50,
       "reason": "Based on the underwriting manual entires for Hypertension, Debit of +25 for BP 128/92 at age 41. Debit of +25 for newly diagnosed. No credits applied."
-    }
+    }}
   ]
-}
+}}
 ```
 """
 
-PC_PROMPT = """You are a senior property and casualty insurance underwriter specializing in risk assessment scoring for P&C exposures.
+
+def _get_pc_prompt(language: str = 'en-US') -> str:
+    language_instruction = get_language_instruction(language)
+    return f"""You are a senior property and casualty insurance underwriter specializing in risk assessment scoring for P&C exposures.
 
 You will be given a JSON array of P&C risk drivers (labeled as "impairments" for consistency) with their scoring factors. For each item in the list, you must:
 
@@ -180,19 +201,21 @@ You will be given a JSON array of P&C risk drivers (labeled as "impairments" for
 
 Important: Do NOT use any knowledge base or life underwriting manual. There is no KB tool for P&C.
 
+IMPORTANT: {language_instruction} The `reason` field for each impairment must be in this language.
+
 Finally, return a single JSON object exactly like this:
 ```json
-{
+{{
   "total_score": 0,
   "impairment_scores": [
-    {"impairment_id": "fire_risk", "sub_total": 10, "reason": "Masonry noncombustible with sprinklers (-10), remote hydrant (+20). Net +10."}
+    {{"impairment_id": "fire_risk", "sub_total": 10, "reason": "Masonry noncombustible with sprinklers (-10), remote hydrant (+20). Net +10."}}
   ]
-}
+}}
 ```
 """
 
 
-def _build_agent(insurance_type: str | None) -> object:
+def _build_agent(insurance_type: str | None, language: str = 'en-US') -> object:
     # Configure BedrockModel with adaptive retry
     retrying_cfg = Config(
         retries={"mode": "adaptive", "max_attempts": 12}
@@ -201,19 +224,19 @@ def _build_agent(insurance_type: str | None) -> object:
         model_id=MODEL_ID,
         boto_client_config=retrying_cfg
     )
-    print(f"[_build_agent] Created BedrockModel with adaptive retry (max_attempts=12)")
+    print(f"[_build_agent] Created BedrockModel with adaptive retry (max_attempts=12), language={language}")
     
     itype = (insurance_type or '').lower()
     if itype == 'life':
         return Agent(
-            system_prompt=LIFE_PROMPT,
+            system_prompt=_get_life_prompt(language),
             tools=[kb_search, calculator],
             model=model,
         )
     else:
         # property_casualty: exclude KB tool
         return Agent(
-            system_prompt=PC_PROMPT,
+            system_prompt=_get_pc_prompt(language),
             tools=[calculator],
             model=model,
         )
@@ -247,10 +270,10 @@ def _to_agent_message(payload: list[dict]) -> str:
     return "Here is the JSON payload of impairments to score:\n\n" + json.dumps(safe_payload, indent=2)
 
 
-def _run_agent_scoring(payload: list[dict], insurance_type: str | None) -> dict:
+def _run_agent_scoring(payload: list[dict], insurance_type: str | None, language: str = 'en-US') -> dict:
     agent_start = time.time()
-    print(f"[_run_agent_scoring] Building agent for insurance_type={insurance_type}")
-    agent = _build_agent(insurance_type)
+    print(f"[_run_agent_scoring] Building agent for insurance_type={insurance_type}, language={language}")
+    agent = _build_agent(insurance_type, language)
     message = _to_agent_message(payload)
     print(f"[_run_agent_scoring] Agent input message size: {len(message)} bytes")
     print(f"[_run_agent_scoring] Invoking Strands agent...")
@@ -361,12 +384,27 @@ def lambda_handler(event, context):
         insurance_type = insurance_type or 'property_casualty'
     print(f"[score] Final insurance_type: {insurance_type}")
 
+    # Read user language preference from DynamoDB
+    user_language = 'en-US'
+    if job_id and JOBS_TABLE_NAME:
+        try:
+            resp = dynamodb.get_item(
+                TableName=JOBS_TABLE_NAME,
+                Key={'jobId': {'S': job_id}},
+                ProjectionExpression='userLanguage'
+            )
+            item = resp.get('Item', {})
+            user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+            print(f"[score] User language for job {job_id}: {user_language}")
+        except Exception as e:
+            print(f"[score] Error reading userLanguage: {e}")
+
     # Run the Strands scoring agent; preserve raw output
     print(f"[score] Step 4: Running Strands scoring agent, remaining_time={context.get_remaining_time_in_millis()}ms")
     agent_raw: dict
     agent_start = time.time()
     try:
-        agent_raw = _run_agent_scoring(impairments_payload, insurance_type)
+        agent_raw = _run_agent_scoring(impairments_payload, insurance_type, user_language)
         log_timing("Agent scoring", agent_start)
         print(f"[score] Agent scoring completed, total_score={agent_raw.get('total_score')}")
     except Exception as e:

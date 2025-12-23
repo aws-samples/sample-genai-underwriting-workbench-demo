@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ManualPage from './components/ManualPage'
+import { LanguageSelector } from './components/LanguageSelector'
+import { apiClient } from './utils/apiClient'
 import './styles/App.css'
 import { JobPage } from './components/JobPage'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -22,6 +25,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 function UploadPage() {
+  const { t } = useTranslation()
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +44,7 @@ function UploadPage() {
     // Validate all files are PDFs
     const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf'))
     if (invalidFiles.length > 0) {
-      setError(`Please select only PDF files. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`)
+      setError(t('errors.pdfOnly', { files: invalidFiles.map(f => f.name).join(', ') }))
       return
     }
 
@@ -55,7 +59,7 @@ function UploadPage() {
     // Validate all files are PDFs
     const invalidFiles = droppedFiles.filter(file => !file.type.includes('pdf'))
     if (invalidFiles.length > 0) {
-      setError(`Please select only PDF files. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`)
+      setError(t('errors.pdfOnly', { files: invalidFiles.map(f => f.name).join(', ') }))
       return
     }
 
@@ -70,7 +74,7 @@ function UploadPage() {
 
   const handleUpload = async () => {
     if (files.length === 0) {
-      setError('Please select at least one file')
+      setError(t('errors.selectFile'))
       return
     }
 
@@ -86,15 +90,15 @@ function UploadPage() {
         await uploadMultipleFiles(files)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      setError(err instanceof Error ? err.message : t('errors.uploadFailed'))
       setUploading(false)
     }
   }
 
   const uploadSingleFile = async (file: File) => {
-    setUploadProgress({ [file.name]: 'Getting upload URL...' })
+    setUploadProgress({ [file.name]: t('upload.gettingUploadUrl') })
 
-    const presignedUrlResponse = await fetch(`${import.meta.env.VITE_API_URL}/documents/upload`, {
+    const presignedUrlResponse = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/documents/upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -108,19 +112,19 @@ function UploadPage() {
 
     if (!presignedUrlResponse.ok) {
       if (presignedUrlResponse.status === 401) {
-        throw new Error("Unauthorized: API access denied for generating upload URL.");
+        throw new Error(t('errors.unauthorizedUploadUrl'));
       } else {
-        const errorData = await presignedUrlResponse.json().catch(() => ({ error: 'Failed to get upload URL.' }));
-        throw new Error(errorData.error || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
+        const errorData = await presignedUrlResponse.json().catch(() => ({ error: t('errors.failedUploadUrl') }));
+        throw new Error(errorData.error || `${t('errors.failedUploadUrl')}: ${presignedUrlResponse.statusText}`);
       }
     }
 
     const { uploadUrl, jobId } = await presignedUrlResponse.json()
     if (!uploadUrl || !jobId) {
-      throw new Error('Invalid response from upload URL generation endpoint.');
+      throw new Error(t('errors.invalidUploadResponse'));
     }
 
-    setUploadProgress({ [file.name]: 'Uploading to S3...' })
+    setUploadProgress({ [file.name]: t('upload.uploadingToS3') })
 
     const s3UploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
@@ -131,10 +135,10 @@ function UploadPage() {
     })
 
     if (!s3UploadResponse.ok) {
-      throw new Error(`S3 Upload Failed for ${file.name}: ${s3UploadResponse.statusText}`)
+      throw new Error(t('errors.s3UploadFailed', { filename: file.name, error: s3UploadResponse.statusText }))
     }
 
-    setUploadProgress({ [file.name]: 'Uploaded successfully' })
+    setUploadProgress({ [file.name]: t('upload.uploadSuccess') })
     setUploading(false)
     setFiles([])
     navigate(`/jobs/${jobId}`)
@@ -142,9 +146,9 @@ function UploadPage() {
 
   const uploadMultipleFiles = async (files: File[]) => {
     // Step 1: Get batch upload URLs
-    setUploadProgress(Object.fromEntries(files.map(f => [f.name, 'Getting upload URLs...'])))
+    setUploadProgress(Object.fromEntries(files.map(f => [f.name, t('upload.gettingUploadUrls')])))
 
-    const batchResponse = await fetch(`${import.meta.env.VITE_API_URL}/documents/batch-upload`, {
+    const batchResponse = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/documents/batch-upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -157,26 +161,26 @@ function UploadPage() {
 
     if (!batchResponse.ok) {
       if (batchResponse.status === 401) {
-        throw new Error("Unauthorized: API access denied for batch upload.");
+        throw new Error(t('errors.unauthorizedBatchUpload'));
       } else {
-        const errorData = await batchResponse.json().catch(() => ({ error: 'Failed to get batch upload URLs.' }));
-        throw new Error(errorData.error || `Failed to get batch upload URLs: ${batchResponse.statusText}`);
+        const errorData = await batchResponse.json().catch(() => ({ error: t('errors.failedBatchUploadUrls') }));
+        throw new Error(errorData.error || `${t('errors.failedBatchUploadUrls')}: ${batchResponse.statusText}`);
       }
     }
 
     const { uploadUrls } = await batchResponse.json()
     if (!uploadUrls || !Array.isArray(uploadUrls)) {
-      throw new Error('Invalid response from batch upload endpoint.');
+      throw new Error(t('errors.invalidBatchResponse'));
     }
 
     // Step 2: Upload all files to S3
     const uploadPromises = files.map(async (file, index) => {
       const uploadInfo = uploadUrls.find(u => u.filename === file.name)
       if (!uploadInfo) {
-        throw new Error(`No upload URL found for ${file.name}`)
+        throw new Error(t('errors.noUploadUrlForFile', { filename: file.name }))
       }
 
-      setUploadProgress(prev => ({ ...prev, [file.name]: 'Uploading to S3...' }))
+      setUploadProgress(prev => ({ ...prev, [file.name]: t('upload.uploadingToS3') }))
 
       const s3UploadResponse = await fetch(uploadInfo.uploadUrl, {
         method: 'PUT',
@@ -187,10 +191,10 @@ function UploadPage() {
       })
 
       if (!s3UploadResponse.ok) {
-        throw new Error(`S3 Upload Failed for ${file.name}: ${s3UploadResponse.statusText}`)
+        throw new Error(t('errors.s3UploadFailed', { filename: file.name, error: s3UploadResponse.statusText }))
       }
 
-      setUploadProgress(prev => ({ ...prev, [file.name]: 'Uploaded successfully' }))
+      setUploadProgress(prev => ({ ...prev, [file.name]: t('upload.uploadSuccess') }))
     })
 
     await Promise.all(uploadPromises)
@@ -207,9 +211,10 @@ function UploadPage() {
           <span className="header-logo">
             <FontAwesomeIcon icon={faShieldAlt} />
           </span>
-          GenAI Underwriting Workbench
+          {t('header.title')}
         </h1>
         <div className="header-controls">
+          <LanguageSelector />
           <div className="header-insurance-toggle">
             <label className={`option ${insuranceType === 'life' ? 'selected' : ''}`}>
               <input 
@@ -220,7 +225,7 @@ function UploadPage() {
                 onChange={() => setInsuranceType('life')} 
               />
               <span className="option-icon"><FontAwesomeIcon icon={faHeartbeat} /></span>
-              <span>Life</span>
+              <span>{t('common.life')}</span>
             </label>
             <label className={`option ${insuranceType === 'property_casualty' ? 'selected' : ''}`}>
               <input 
@@ -231,7 +236,7 @@ function UploadPage() {
                 onChange={() => setInsuranceType('property_casualty')} 
               />
               <span className="option-icon"><FontAwesomeIcon icon={faHome} /></span>
-              <span>P&C</span>
+              <span>{t('common.propertyAndCasualty')}</span>
             </label>
           </div>
           {insuranceType === 'life' && (
@@ -241,7 +246,7 @@ function UploadPage() {
               className="nav-button"
             >
               <FontAwesomeIcon icon={faStethoscope} style={{ marginRight: '8px' }} />
-              Underwriting Manual
+              {t('header.underwritingManual')}
             </button>
           )}
           <button
@@ -250,7 +255,7 @@ function UploadPage() {
             className="nav-button"
           >
             <FontAwesomeIcon icon={faList} style={{ marginRight: '8px' }} />
-            View All Jobs
+            {t('header.viewAllJobs')}
           </button>
         </div>
       </div>
@@ -258,33 +263,33 @@ function UploadPage() {
       <div className="description-section">
         <h2>
           {insuranceType === 'life' 
-            ? 'Streamline Your Life Insurance Underwriting' 
-            : 'Streamline Your Property & Casualty Insurance Underwriting'}
+            ? t('upload.streamlineLife')
+            : t('upload.streamlinePropertyCasualty')}
         </h2>
         <p className="intro-text">
           {insuranceType === 'life' 
-            ? <span>TestTransform complex life insurance applications and medical documents into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for life insurance underwriters to automatically extract, analyze, and evaluate risk factors from application packets.</span>
-            : <span>TestTransform complex property & casualty insurance applications and ACORD forms into actionable insights using advanced AI analysis powered by <strong>Amazon Bedrock</strong> and <strong>Claude Haiku 4.5</strong>. Purpose-built for P&C insurance underwriters to automatically extract, analyze, and evaluate property risk factors from application packets.</span>}
+            ? <span dangerouslySetInnerHTML={{ __html: t('upload.introLife') }} />
+            : <span dangerouslySetInnerHTML={{ __html: t('upload.introPropertyCasualty') }} />}
         </p>
         
         <div className="features-grid">
           <div className="feature-card">
             <h3>
               <FontAwesomeIcon icon={faFileAlt} />
-              Document Analysis
+              {t('upload.documentAnalysis')}
             </h3>
             <ul>
               {insuranceType === 'life' ? (
                 <>
-                  <li>Process complete life insurance application packets</li>
-                  <li>Extract medical history and risk factors</li>
-                  <li>Automatic classification of APS and lab reports</li>
+                  <li>{t('features.life.documentAnalysis.item1')}</li>
+                  <li>{t('features.life.documentAnalysis.item2')}</li>
+                  <li>{t('features.life.documentAnalysis.item3')}</li>
                 </>
               ) : (
                 <>
-                  <li>Process complete P&C insurance application packets</li>
-                  <li>Extract property details and risk factors</li>
-                  <li>Automatic classification of ACORD forms</li>
+                  <li>{t('features.propertyAndCasualty.documentAnalysis.item1')}</li>
+                  <li>{t('features.propertyAndCasualty.documentAnalysis.item2')}</li>
+                  <li>{t('features.propertyAndCasualty.documentAnalysis.item3')}</li>
                 </>
               )}
             </ul>
@@ -293,22 +298,22 @@ function UploadPage() {
           <div className="feature-card">
             <h3>
               <FontAwesomeIcon icon={insuranceType === 'life' ? faStethoscope : faHome} />
-              {insuranceType === 'life' ? 'Underwriter Analysis' : 'Property Assessment'}
+              {insuranceType === 'life' ? t('upload.underwriterAnalysis') : t('upload.propertyAssessmentTitle')}
             </h3>
             <ul>
               {insuranceType === 'life' ? (
                 <>
-                  <li>AI-driven mortality risk assessment</li>
-                  <li>Medical history timeline construction</li>
-                  <li>Cross-reference discrepancies across documents</li>
-                  <li>Automated medical condition evaluation</li>
+                  <li>{t('features.life.underwriterAnalysis.item1')}</li>
+                  <li>{t('features.life.underwriterAnalysis.item2')}</li>
+                  <li>{t('features.life.underwriterAnalysis.item3')}</li>
+                  <li>{t('features.life.underwriterAnalysis.item4')}</li>
                 </>
               ) : (
                 <>
-                  <li>AI-driven property risk assessment</li>
-                  <li>Detailed property characteristics analysis</li>
-                  <li>Cross-reference discrepancies across documents</li>
-                  <li>Environmental and geographical risk evaluation</li>
+                  <li>{t('features.propertyAndCasualty.propertyAssessment.item1')}</li>
+                  <li>{t('features.propertyAndCasualty.propertyAssessment.item2')}</li>
+                  <li>{t('features.propertyAndCasualty.propertyAssessment.item3')}</li>
+                  <li>{t('features.propertyAndCasualty.propertyAssessment.item4')}</li>
                 </>
               )}
             </ul>
@@ -317,20 +322,20 @@ function UploadPage() {
           <div className="feature-card">
             <h3>
               <FontAwesomeIcon icon={faRobot} />
-              Interactive Assistant
+              {t('upload.interactiveAssistant')}
             </h3>
             <ul>
               {insuranceType === 'life' ? (
                 <>
-                  <li>Query complex medical histories</li>
-                  <li>Instant access to policy-relevant details</li>
-                  <li>Navigate multi-document applications</li>
+                  <li>{t('features.life.interactiveAssistant.item1')}</li>
+                  <li>{t('features.life.interactiveAssistant.item2')}</li>
+                  <li>{t('features.life.interactiveAssistant.item3')}</li>
                 </>
               ) : (
                 <>
-                  <li>Query property details and risk factors</li>
-                  <li>Instant access to policy-relevant details</li>
-                  <li>Navigate complex ACORD forms</li>
+                  <li>{t('features.propertyAndCasualty.interactiveAssistant.item1')}</li>
+                  <li>{t('features.propertyAndCasualty.interactiveAssistant.item2')}</li>
+                  <li>{t('features.propertyAndCasualty.interactiveAssistant.item3')}</li>
                 </>
               )}
             </ul>
@@ -338,30 +343,30 @@ function UploadPage() {
         </div>
 
         <div className="supported-documents">
-          <h3>Supported Documents</h3>
+          <h3>{t('upload.supportedDocuments')}</h3>
           <div className="document-types">
             {insuranceType === 'life' ? (
               <>
-                <span className="document-type">Life Insurance Applications</span>
-                <span className="document-type">Attending Physician Statements (APS)</span>
-                <span className="document-type">Lab Reports</span>
-                <span className="document-type">Pharmacy Records</span>
-                <span className="document-type">Financial Disclosures</span>
-                <span className="document-type">Medical History Questionnaires</span>
-                <span className="document-type">Supplemental Forms</span>
+                <span className="document-type">{t('documents.life.applications')}</span>
+                <span className="document-type">{t('documents.life.aps')}</span>
+                <span className="document-type">{t('documents.life.labReports')}</span>
+                <span className="document-type">{t('documents.life.pharmacyRecords')}</span>
+                <span className="document-type">{t('documents.life.financialDisclosures')}</span>
+                <span className="document-type">{t('documents.life.medicalQuestionnaires')}</span>
+                <span className="document-type">{t('documents.life.supplementalForms')}</span>
               </>
             ) : (
               <>
-                <span className="document-type">ACORD Forms</span>
-                <span className="document-type">Property Inspections</span>
-                <span className="document-type">Claims History</span>
-                <span className="document-type">Property Valuations</span>
-                <span className="document-type">Flood Zone Certificates</span>
-                <span className="document-type">Building Code Compliance</span>
-                <span className="document-type">Security Documentation</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.acordForms')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.propertyInspections')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.claimsHistory')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.propertyValuations')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.floodZoneCertificates')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.buildingCodeCompliance')}</span>
+                <span className="document-type">{t('documents.propertyAndCasualty.securityDocumentation')}</span>
               </>
             )}
-            <span className="document-type">And More</span>
+            <span className="document-type">{t('common.andMore')}</span>
           </div>
         </div>
       </div>
@@ -369,11 +374,11 @@ function UploadPage() {
       <div className="upload-section">
         <h2>
           <FontAwesomeIcon icon={faFileMedical} style={{ marginRight: '10px', color: '#3b82f6' }} />
-          Upload Documents
+          {t('upload.title')}
         </h2>
         
         <div className="insurance-type-selector">
-          <h3>Insurance Type</h3>
+          <h3>{t('insuranceType.selectType')}</h3>
           <div className="insurance-options">
             <label className={`option ${insuranceType === 'life' ? 'selected' : ''}`}>
               <input 
@@ -384,7 +389,7 @@ function UploadPage() {
                 onChange={() => setInsuranceType('life')} 
               />
               <span className="option-icon"><FontAwesomeIcon icon={faHeartbeat} /></span>
-              <span className="option-label">Life Insurance</span>
+              <span className="option-label">{t('insuranceType.life')}</span>
             </label>
             <label className={`option ${insuranceType === 'property_casualty' ? 'selected' : ''}`}>
               <input 
@@ -395,7 +400,7 @@ function UploadPage() {
                 onChange={() => setInsuranceType('property_casualty')} 
               />
               <span className="option-icon"><FontAwesomeIcon icon={faHome} /></span>
-              <span className="option-label">Property & Casualty</span>
+              <span className="option-label">{t('insuranceType.propertyAndCasualty')}</span>
             </label>
           </div>
         </div>
@@ -417,17 +422,17 @@ function UploadPage() {
           <label htmlFor="file-input" className="file-input-label">
             <FontAwesomeIcon icon={faFileMedical} size="2x" />
             <p>
-              <strong>Click to select files</strong> or drag and drop PDF files here
+              <strong>{t('upload.selectFiles')}</strong> {t('upload.dragDrop')}
             </p>
             <p className="file-hint">
-              You can select multiple PDF files at once
+              {t('upload.multipleFiles')}
             </p>
           </label>
         </div>
         
         {files.length > 0 && (
           <div className="selected-files">
-            <h4>Selected Files ({files.length})</h4>
+            <h4>{t('upload.selectedFiles', { count: files.length })}</h4>
             <ul className="file-list">
               {files.map((file, index) => (
                 <li key={index}>
@@ -443,7 +448,7 @@ function UploadPage() {
               disabled={uploading}
               className="upload-button"
             >
-              {uploading ? 'Uploading...' : `Analyze ${files.length} Document${files.length > 1 ? 's' : ''}`}
+              {uploading ? t('upload.uploading') : t('upload.analyzing', { count: files.length })}
             </button>
           </div>
         )}
@@ -474,6 +479,7 @@ interface Job {
 
 // Add the JobsList component
 function JobsList() {
+  const { t } = useTranslation()
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -551,21 +557,21 @@ function JobsList() {
 
   const fetchJobs = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/jobs`);
+      const response = await apiClient.fetch(`${import.meta.env.VITE_API_URL}/jobs`);
 
       if (!response.ok) {
         if (response.status === 401) {
-          setError("Unauthorized: API access denied.");
+          setError(t('errors.unauthorized'));
           setLoading(false);
           return;
         }
-        throw new Error('Failed to fetch jobs');
+        throw new Error(t('jobs.fetchError'));
       }
 
       const data = await response.json();
       setJobs(data.jobs || data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -603,15 +609,16 @@ function JobsList() {
           <span className="header-logo">
             <FontAwesomeIcon icon={faShieldAlt} />
           </span>
-          GenAI Underwriting Workbench
+          {t('header.title')}
         </h1>
         <div className="header-controls">
+          <LanguageSelector />
           <button onClick={() => navigate('/')} className="nav-button">
-            <FontAwesomeIcon icon={faFileMedical} /> Upload New
+            <FontAwesomeIcon icon={faFileMedical} /> {t('header.uploadNew')}
           </button>
           <button onClick={() => navigate('/manual')} className="nav-button">
             <FontAwesomeIcon icon={faStethoscope} style={{ marginRight: '8px' }} />
-            Underwriting Manual
+            {t('header.underwritingManual')}
           </button>
         </div>
       </div>
@@ -619,11 +626,11 @@ function JobsList() {
       <div className="jobs-section">
         <h2>
           <FontAwesomeIcon icon={faList} style={{ marginRight: '10px' }} /> 
-          Your Analysis Jobs
+          {t('jobs.title')}
         </h2>
 
         {loading ? (
-          <div className="loading">Loading jobs...</div>
+          <div className="loading">{t('jobs.loading')}</div>
         ) : error ? (
           <div className="error-message">
             {error}
@@ -631,17 +638,17 @@ function JobsList() {
               onClick={fetchJobs}
               className="refresh-button"
             >
-              Try Again
+              {t('jobs.tryAgain')}
             </button>
           </div>
         ) : jobs.length === 0 ? (
           <div className="no-jobs">
-            <p>You haven't uploaded any documents yet.</p>
+            <p>{t('jobs.noJobs')}</p>
             <button 
               onClick={() => navigate('/')}
               className="upload-button"
             >
-              Upload Your First Document
+              {t('jobs.uploadFirst')}
             </button>
           </div>
         ) : (

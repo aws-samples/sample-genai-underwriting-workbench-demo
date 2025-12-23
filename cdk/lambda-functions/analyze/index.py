@@ -28,6 +28,21 @@ def get_s3_client():
     return boto3.client('s3')
 
 
+def get_language_instruction(language: str) -> str:
+    """Get language instruction to append to prompts for multilingual support"""
+    language_map = {
+        'en-US': 'Respond in English.',
+        'zh-CN': 'Respond in Simplified Chinese (简体中文).',
+        'ja-JP': 'Respond in Japanese (日本語).',
+        'es-ES': 'Respond in Spanish (Español).',
+        'fr-FR': 'Respond in French (Français).',
+        'fr-CA': 'Respond in Canadian French (Français canadien).',
+        'de-DE': 'Respond in German (Deutsch).',
+        'it-IT': 'Respond in Italian (Italiano).',
+    }
+    return language_map.get(language, 'Respond in English.')
+
+
 # Define the expected output schema for this analysis lambda
 ANALYSIS_OUTPUT_SCHEMA = {
     "overall_summary": "string",
@@ -111,6 +126,24 @@ def lambda_handler(event, context):
     classification = event.get('classification', {})
     job_id = classification.get('jobId')
     document_type = classification.get('classification')
+    
+    # Read user language preference from DynamoDB
+    user_language = 'en-US'
+    if job_id and DB_TABLE:
+        try:
+            resp = dynamodb_client.get_item(
+                TableName=DB_TABLE,
+                Key={'jobId': {'S': job_id}},
+                ProjectionExpression='userLanguage'
+            )
+            item = resp.get('Item', {})
+            user_language = (item.get('userLanguage') or {}).get('S') or 'en-US'
+            print(f"[lambda_handler] User language for job {job_id}: {user_language}")
+        except Exception as e:
+            print(f"[lambda_handler] Error reading userLanguage: {e}")
+    
+    language_instruction = get_language_instruction(user_language)
+    
     if job_id and DB_TABLE:
         try:
             ts = datetime.now(timezone.utc).isoformat()
@@ -154,6 +187,8 @@ def lambda_handler(event, context):
         - If a section like 'identified_risks', 'discrepancies', or 'missing_information' has no items, provide an empty list ([]) for that key.
         - For 'page_references', if the source extracted data does not contain explicit page numbers associated with the information, use ["N/A"].
         - If you can estimate a 'confidence_score' (0.0 to 1.0) for your overall analysis based on the quality and completeness of the provided extracted data, include it. Otherwise, you can omit it or use a default like 0.75.
+        
+        IMPORTANT: {language_instruction} All text content in the JSON (summaries, descriptions, recommendations) must be in this language.
         
         Return ONLY the JSON object.
         """

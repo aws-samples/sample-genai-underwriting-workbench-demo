@@ -1,0 +1,322 @@
+{
+  "common": {
+    "upload": "Subir",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "life": "Vida",
+    "propertyAndCasualty": "P&C",
+    "andMore": "Y Más",
+    "switchingLanguage": "Cambiando idioma...",
+    "selectLanguage": "Seleccionar idioma",
+    "currentLanguage": "Idioma actual: {{language}}",
+    "availableLanguages": "Idiomas disponibles",
+    "selected": "Seleccionado"
+  },
+  "header": {
+    "title": "Banco de Trabajo de Suscripción GenAI",
+    "uploadNew": "Subir Nuevo",
+    "viewAllJobs": "Ver Todos los Trabajos",
+    "underwritingManual": "Manual de Suscripción"
+  },
+  "upload": {
+    "title": "Subir Documentos",
+    "selectFiles": "Haga clic para seleccionar archivos",
+    "dragDrop": "o arrastre y suelte archivos PDF aquí",
+    "multipleFiles": "Puede seleccionar varios archivos PDF a la vez",
+    "analyzing": "Analizar {{count}} Documento",
+    "analyzing_plural": "Analizar {{count}} Documentos",
+    "uploadSuccess": "Subido exitosamente",
+    "uploadFailed": "Error al subir: {{error}}",
+    "uploading": "Subiendo...",
+    "gettingUploadUrl": "Obteniendo URL de carga...",
+    "uploadingToS3": "Subiendo a S3...",
+    "gettingUploadUrls": "Obteniendo URLs de carga...",
+    "selectedFiles": "Archivos Seleccionados ({{count}})",
+    "streamlineLife": "Optimice Su Suscripción de Seguros de Vida",
+    "streamlinePropertyCasualty": "Optimice Su Suscripción de Seguros de Propiedad y Accidentes",
+    "introLife": "Transforme aplicaciones complejas de seguros de vida y documentos médicos en información procesable utilizando análisis de IA avanzado impulsado por <strong>Amazon Bedrock</strong> y <strong>Claude Haiku 4.5</strong>. Diseñado específicamente para suscriptores de seguros de vida para extraer, analizar y evaluar automáticamente factores de riesgo de paquetes de aplicaciones.",
+    "introPropertyCasualty": "Transforme aplicaciones complejas de seguros de propiedad y accidentes y formularios ACORD en información procesable utilizando análisis de IA avanzado impulsado por <strong>Amazon Bedrock</strong> y <strong>Claude Haiku 4.5</strong>. Diseñado específicamente para suscriptores de seguros de P&C para extraer, analizar y evaluar automáticamente factores de riesgo de propiedad de paquetes de aplicaciones.",
+    "documentAnalysis": "Análisis de Documentos",
+    "underwriterAnalysis": "Análisis del Suscriptor",
+    "propertyAssessmentTitle": "Evaluación de Propiedad",
+    "interactiveAssistant": "Asistente Interactivo",
+    "supportedDocuments": "Documentos Soportados"
+  },
+  "features": {
+    "life": {
+      "documentAnalysis": {
+        "item1": "Procesar paquetes completos de aplicaciones de seguros de vida",
+        "item2": "Extraer historial médico y factores de riesgo",
+        "item3": "Clasificación automática de APS e informes de laboratorio"
+      },
+      "underwriterAnalysis": {
+        "item1": "Evaluación de riesgo de mortalidad impulsada por IA",
+        "item2": "Construcción de línea de tiempo de historial médico",
+        "item3": "Referencias cruzadas de discrepancias entre documentos",
+        "item4": "Evaluación automática de condiciones médicas"
+      },
+      "interactiveAssistant": {
+        "item1": "Consultar historiales médicos complejos",
+        "item2": "Acceso instantáneo a detalles relevantes de la póliza",
+        "item3": "Navegar aplicaciones de múltiples documentos"
+      }
+    },
+    "propertyAndCasualty": {
+      "documentAnalysis": {
+        "item1": "Procesar paquetes completos de aplicaciones de seguros de P&C",
+        "item2": "Extraer detalles de propiedad y factores de riesgo",
+        "item3": "Clasificación automática de formularios ACORD"
+      },
+      "propertyAssessment": {
+        "item1": "Evaluación de riesgo de propiedad impulsada por IA",
+        "item2": "Análisis detallado de características de propiedad",
+        "item3": "Referencias cruzadas de discrepancias entre documentos",
+        "item4": "Evaluación de riesgo ambiental y geográfico"
+      },
+      "interactiveAssistant": {
+        "item1": "Consultar detalles de propiedad y factores de riesgo",
+        "item2": "Acceso instantáneo a detalles relevantes de la póliza",
+        "item3": "Navegar formularios ACORD complejos"
+      }
+    }
+  },
+  "documents": {
+    "life": {
+      "applications": "Aplicaciones de Seguros de Vida",
+      "aps": "Declaraciones de Médico Tratante (APS)",
+      "labReports": "Informes de Laboratorio",
+      "pharmacyRecords": "Registros de Farmacia",
+      "financialDisclosures": "Divulgaciones Financieras",
+      "medicalQuestionnaires": "Cuestionarios de Historial Médico",
+      "supplementalForms": "Formularios Suplementarios"
+    },
+    "propertyAndCasualty": {
+      "acordForms": "Formularios ACORD",
+      "propertyInspections": "Inspecciones de Propiedad",
+      "claimsHistory": "Historial de Reclamaciones",
+      "propertyValuations": "Valoraciones de Propiedad",
+      "floodZoneCertificates": "Certificados de Zona de Inundación",
+      "buildingCodeCompliance": "Cumplimiento del Código de Construcción",
+      "securityDocumentation": "Documentación de Seguridad"
+    }
+  },
+  "insuranceType": {
+    "life": "Seguro de Vida",
+    "propertyAndCasualty": "Seguro de Propiedad y Accidentes",
+    "selectType": "Tipo de Seguro"
+  },
+  "jobs": {
+    "title": "Trabajos de Suscripción",
+    "noJobs": "Aún no ha subido ningún documento.",
+    "uploadFirst": "Suba Su Primer Documento",
+    "loading": "Cargando trabajos...",
+    "fetchError": "Error al obtener trabajos",
+    "tryAgain": "Intentar de Nuevo",
+    "jobId": "ID: {{id}}",
+    "status": {
+      "completed": "Completado",
+      "inProgress": "En Progreso",
+      "failed": "Fallido"
+    }
+  },
+  "analysis": {
+    "riskAssessment": "Evaluación de Riesgos",
+    "discrepancies": "Discrepancias",
+    "medicalTimeline": "Línea de Tiempo Médica",
+    "propertyAssessment": "Evaluación de Propiedad",
+    "finalRecommendation": "Recomendación Final"
+  },
+  "chat": {
+    "title": "Chat con Asistente de IA",
+    "placeholder": "Haga una pregunta sobre este documento...",
+    "send": "Enviar",
+    "thinking": "Pensando..."
+  },
+  "errors": {
+    "pdfOnly": "Por favor seleccione solo archivos PDF. Archivos inválidos: {{files}}",
+    "selectFile": "Por favor seleccione al menos un archivo",
+    "uploadFailed": "Error al subir",
+    "unauthorized": "No autorizado: Acceso a API denegado",
+    "fetchFailed": "Error al obtener datos",
+    "unauthorizedUploadUrl": "No autorizado: Acceso a API denegado para generar URL de carga.",
+    "failedUploadUrl": "Error al obtener URL de carga.",
+    "invalidUploadResponse": "Respuesta inválida del punto final de generación de URL de carga.",
+    "s3UploadFailed": "Error de carga S3 para {{filename}}: {{error}}",
+    "unauthorizedBatchUpload": "No autorizado: Acceso a API denegado para carga por lotes.",
+    "failedBatchUploadUrls": "Error al obtener URLs de carga por lotes.",
+    "invalidBatchResponse": "Respuesta inválida del punto final de carga por lotes.",
+    "noUploadUrlForFile": "No se encontró URL de carga para {{filename}}"
+  },
+  "jobPage": {
+    "download": {
+      "detection": "Descargar Informe de Análisis",
+      "pdf": "Descargar PDF",
+      "generating": "Generando..."
+    },
+    "loadingJobDetails": "Cargando Detalles del Trabajo...",
+    "fetchingLatestInfo": "Obteniendo la información más reciente...",
+    "errorOccurred": "Ocurrió un Error",
+    "retry": "Reintentar",
+    "processingJob": "Procesando Trabajo {{jobId}}...",
+    "howItWorks": "Cómo Funciona",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "page": "Página",
+    "of": "de",
+    "print": "Imprimir PDF",
+    "refresh": "Actualizar Datos",
+    "hideAnalysis": "Ocultar Análisis",
+    "showAnalysis": "Mostrar Análisis",
+    "loadingDocument": "Cargando Documento...",
+    "pdfPlaceholder": "El documento PDF aparecerá aquí una vez que se complete el análisis.",
+    "loadingPdf": "Cargando PDF...",
+    "errorLoadingPdf": "Error al cargar PDF.",
+    "tabs": {
+      "documentAnalysis": "Extracción de Datos",
+      "documentAnalysis": "Análisis de Documentos",
+      "impairmentDetection": "Agente de Detección de Impedimentos",
+      "scoring": "Agente de Puntuación",
+      "chatAssistant": "Asistente de Chat"
+    },
+    "sections": {
+      "uwScore": "Puntuación UW",
+      "riskAssessment": "Evaluación de Riesgos",
+      "detectedImpairments": "Deterioros Detectados",
+      "discrepancies": "Discrepancias",
+      "medicalTimeline": "Cronología Médica",
+      "propertyAssessment": "Evaluación de Propiedad",
+      "finalRecommendation": "Recomendación Final"
+    },
+    "toggle": {
+      "showRawData": "Mostrar Análisis de Documentos"
+    },
+    "analysis": {
+      "loading": "Cargando análisis...",
+      "noData": "No hay datos de análisis disponibles.",
+      "noImpairments": "No se detectaron deterioros.",
+      "noDiscrepancies": "No se encontraron discrepancias.",
+      "evidence": "Evidencia",
+      "scoringFactors": "Factores de Puntuación",
+      "viewManual": "Ver Manual",
+      "recommendedActions": "Acciones Recomendadas",
+      "noActions": "No hay acciones recomendadas disponibles."
+    },
+    "documentAnalysis": {
+      "loading": "Cargando secciones de análisis de documentos...",
+      "noData": "No hay datos de análisis de página de documento disponibles.",
+      "uncategorized": "Sin Categorizar"
+    },
+    "detection": {
+      "noResults": "No hay resultados de detección.",
+      "noImpairments": "No se detectaron impedimentos.",
+      "summaryNarrative": "Narrativa Resumida",
+      "detectedImpairments": "Impedimentos Detectados",
+      "impairment": "Impedimento",
+      "evidence": "Evidencia",
+      "scoringFactors": "Factores de Puntuación",
+      "discrepancies": "Discrepancias",
+      "viewGuidelines": "Ver Directrices para {{name}}"
+    },
+    "scoring": {
+      "noResults": "No hay resultados de puntuación.",
+      "noImpairments": "No se puntuaron impedimentos.",
+      "overallScore": "Puntuación General",
+      "impairmentScores": "Puntuaciones de Impedimentos",
+      "reason": "Razón"
+    },
+    "chat": {
+      "greeting": "¡Hola! Soy tu asistente de IA. He analizado este documento y puedo ayudarte a responder cualquier pregunta que tengas al respecto.",
+      "greetingPropertyCasualty": "¡Hola! Soy tu asistente de suscripción de seguros de Propiedad y Accidentes. He analizado este documento y puedo ayudarte con preguntas sobre detalles de propiedad, factores de riesgo y consideraciones de cobertura.",
+      "greetingLife": "¡Hola! Soy tu asistente de suscripción de Seguros de Vida. He analizado este documento y puedo ayudarte con preguntas sobre historial médico, factores de riesgo y consideraciones de póliza.",
+      "greetingGeneric": "¡Hola! Soy tu asistente de IA. ¿Cómo puedo ayudarte con este documento?",
+      "placeholder": "Pregúntame cualquier cosa sobre el documento...",
+      "send": "Enviar",
+      "typing": "Escribiendo...",
+      "error": "Error de chat. Por favor, inténtalo de nuevo.",
+      "userAvatar": "U",
+      "aiAvatar": "IA"
+    },
+    "agentAction": {
+      "title": "Acción del Agente de IA Completada",
+      "subtitle": "Nuestro agente de IA ha procesado tu documento y ha tomado medidas",
+      "close": "Cerrar notificación",
+      "emailSent": "¡Correo Enviado!",
+      "emailSentDetails": "El agente ha enviado un correo electrónico basado en el análisis del documento.",
+      "applicationReviewed": "Aplicación Revisada:",
+      "applicationReviewedDetails": "El agente ha determinado que esta aplicación requiere revisión.",
+      "actionTaken": "Acción Tomada:",
+      "actionTakenDetails": "El agente ha completado el procesamiento de este documento.",
+      "viewDetails": "Ver Detalles"
+    },
+    "backendPhrases": {
+      "applicationReviewComplete": "Revisión de Solicitud Completada",
+      "applicationStatus": "Estado de Solicitud:",
+      "riskFactorsIdentified": "Factores de Riesgo Identificados:",
+      "discrepanciesFound": "Discrepancias Encontradas:",
+      "finalRecommendation": "Recomendación Final",
+      "recommendationDetails": "Detalles de Recomendación",
+      "low": "Bajo:",
+      "medium": "Medio:",
+      "high": "Alto:",
+      "ineligible": "NO ELEGIBLE",
+      "eligible": "ELEGIBLE",
+      "approved": "APROBADO",
+      "declined": "RECHAZADO",
+      "pendingReview": "REVISIÓN PENDIENTE",
+      "referForReview": "REFERIR PARA REVISIÓN",
+      "documentsRequested": "DOCUMENTOS SOLICITADOS",
+      "pages": "Páginas:"
+    },
+    "status": {
+      "created": {
+        "phase": "Trabajo Creado",
+        "details": "El trabajo ha sido creado y está esperando que se complete la carga del documento..."
+      },
+      "uploadPending": {
+        "phase": "Carga Pendiente",
+        "details": "La carga del documento se está finalizando y poniendo en cola para su procesamiento..."
+      },
+      "classifying": {
+        "phase": "Clasificando Documento",
+        "details": "La IA está analizando el documento para determinar su tipo y estructura para un procesamiento óptimo..."
+      },
+      "extracting": {
+        "phase": "Extrayendo Información",
+        "details": "Los modelos de IA avanzados están leyendo el documento y extrayendo información clave y puntos de datos..."
+      },
+      "detecting": {
+        "phase": "Detectando Impedimentos",
+        "details": "La IA está identificando impedimentos y factores de puntuación requeridos..."
+      },
+      "scoring": {
+        "phase": "Puntuando Impedimentos",
+        "details": "La IA está calculando subtotales de impedimentos y puntuación general..."
+      },
+      "analyzing": {
+        "phase": "Analizando Contenido",
+        "details": "Nuestra IA de suscripción está realizando un análisis exhaustivo para identificar riesgos, discrepancias e información..."
+      },
+      "acting": {
+        "phase": "Tomando Acción",
+        "details": "El agente de IA está tomando decisiones y acciones apropiadas basadas en los resultados del análisis..."
+      },
+      "complete": {
+        "phase": "Completo",
+        "details": "¡Análisis completo! Revisa los resultados detallados y las recomendaciones de IA a continuación."
+      },
+      "failed": {
+        "phase": "Fallido",
+        "details": "Ocurrió un error durante el procesamiento. Por favor, inténtalo de nuevo o contacta con soporte."
+      },
+      "error": {
+        "phase": "Error",
+        "details": "Ocurrió un error durante el procesamiento. Por favor, inténtalo de nuevo o contacta con soporte."
+      },
+      "processing": "Procesando",
+      "unknownStatus": "Estado: {{status}}"
+    }
+  }
+}

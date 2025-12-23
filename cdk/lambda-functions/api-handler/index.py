@@ -15,6 +15,20 @@ STATE_MACHINE_ARN = os.environ.get('STATE_MACHINE_ARN')
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
 KB_SOURCE_BUCKET = os.environ.get('KB_SOURCE_BUCKET')
 
+# Supported languages for multilingual responses
+SUPPORTED_LANGUAGES = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'fr-FR', 'fr-CA', 'de-DE', 'it-IT']
+
+
+def extract_language_from_request(event):
+    """Extract user language preference from request headers"""
+    headers = event.get('headers', {}) or {}
+    # Headers can be case-insensitive, check both
+    language = headers.get('X-User-Language') or headers.get('x-user-language')
+    
+    if language and language in SUPPORTED_LANGUAGES:
+        return language
+    return 'en-US'  # Default to English
+
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
@@ -28,7 +42,7 @@ def lambda_handler(event, context):
     # Set CORS headers for all responses
     headers = {
         'Access-Control-Allow-Origin': '*',  # Allow all origins
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Language',
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
         'Content-Type': 'application/json'
     }
@@ -308,6 +322,9 @@ def generate_upload_url(event):
         
         if not filename:
             return {'error': 'Missing filename in request'}
+        
+        # Extract user language preference from request headers
+        user_language = extract_language_from_request(event)
             
         # Generate a unique job ID
         job_id = str(uuid.uuid4())
@@ -336,7 +353,8 @@ def generate_upload_url(event):
                 'uploadTimestamp': {'S': timestamp_now},
                 'originalFilename': {'S': filename},
                 's3Key': {'S': s3_key},
-                'insuranceType': {'S': insurance_type}
+                'insuranceType': {'S': insurance_type},
+                'userLanguage': {'S': user_language}
             }
         )
         
@@ -368,6 +386,9 @@ def generate_batch_upload_urls(event):
             
         if not files or not isinstance(files, list):
             return {'error': 'Missing or invalid files array in request'}
+        
+        # Extract user language preference from request headers
+        user_language = extract_language_from_request(event)
             
         # Generate a batch ID for grouping related uploads
         batch_id = str(uuid.uuid4())
@@ -407,7 +428,8 @@ def generate_batch_upload_urls(event):
                     'uploadTimestamp': {'S': timestamp_now},
                     'originalFilename': {'S': filename},
                     's3Key': {'S': s3_key},
-                    'insuranceType': {'S': insurance_type}
+                    'insuranceType': {'S': insurance_type},
+                    'userLanguage': {'S': user_language}
                 }
             )
             
