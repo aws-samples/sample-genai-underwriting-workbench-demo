@@ -1,0 +1,849 @@
+{
+  "name": "manual",
+  "title": "Manual",
+  "type": "dir",
+  "routePath": "",
+  "hasReadme": true,
+  "children": [
+    {
+      "name": "1-foundations",
+      "title": "1 Foundations",
+      "type": "dir",
+      "routePath": "1-foundations",
+      "hasReadme": true,
+      "children": [
+        {
+          "name": "age_amount_grid.md",
+          "title": "Age Amount Grid",
+          "type": "file",
+          "routePath": "1-foundations/age_amount_grid"
+        },
+        {
+          "name": "philosophy_risk_appetite.md",
+          "title": "Philosophy Risk Appetite",
+          "type": "file",
+          "routePath": "1-foundations/philosophy_risk_appetite"
+        },
+        {
+          "name": "retention_reinsurance.md",
+          "title": "Retention Reinsurance",
+          "type": "file",
+          "routePath": "1-foundations/retention_reinsurance"
+        },
+        {
+          "name": "risk_classes_nomenclature.md",
+          "title": "Risk Classes Nomenclature",
+          "type": "file",
+          "routePath": "1-foundations/risk_classes_nomenclature"
+        }
+      ]
+    },
+    {
+      "name": "2-non-medical-factors",
+      "title": "2 Non Medical Factors",
+      "type": "dir",
+      "routePath": "2-non-medical-factors",
+      "hasReadme": true,
+      "children": [
+        {
+          "name": "avocations.md",
+          "title": "Avocations",
+          "type": "file",
+          "routePath": "2-non-medical-factors/avocations"
+        },
+        {
+          "name": "criminal_history_guidelines.md",
+          "title": "Criminal History Guidelines",
+          "type": "file",
+          "routePath": "2-non-medical-factors/criminal_history_guidelines"
+        },
+        {
+          "name": "dui_mvr_guidelines.md",
+          "title": "Dui Mvr Guidelines",
+          "type": "file",
+          "routePath": "2-non-medical-factors/dui_mvr_guidelines"
+        },
+        {
+          "name": "financial_underwriting.md",
+          "title": "Financial Underwriting",
+          "type": "file",
+          "routePath": "2-non-medical-factors/financial_underwriting"
+        },
+        {
+          "name": "foreign_travel_residency.md",
+          "title": "Foreign Travel Residency",
+          "type": "file",
+          "routePath": "2-non-medical-factors/foreign_travel_residency"
+        },
+        {
+          "name": "lifestyle_legal.md",
+          "title": "Lifestyle Legal",
+          "type": "file",
+          "routePath": "2-non-medical-factors/lifestyle_legal"
+        },
+        {
+          "name": "marijuana_guidelines.md",
+          "title": "Marijuana Guidelines",
+          "type": "file",
+          "routePath": "2-non-medical-factors/marijuana_guidelines"
+        },
+        {
+          "name": "missionary_work.md",
+          "title": "Missionary Work",
+          "type": "file",
+          "routePath": "2-non-medical-factors/missionary_work"
+        },
+        {
+          "name": "nicotine_alternatives_guidelines.md",
+          "title": "Nicotine Alternatives Guidelines",
+          "type": "file",
+          "routePath": "2-non-medical-factors/nicotine_alternatives_guidelines"
+        },
+        {
+          "name": "occupation_risks.md",
+          "title": "Occupation Risks",
+          "type": "file",
+          "routePath": "2-non-medical-factors/occupation_risks"
+        },
+        {
+          "name": "sanctioned_countries.md",
+          "title": "Sanctioned Countries",
+          "type": "file",
+          "routePath": "2-non-medical-factors/sanctioned_countries"
+        },
+        {
+          "name": "travel_guidelines.md",
+          "title": "Travel Guidelines",
+          "type": "file",
+          "routePath": "2-non-medical-factors/travel_guidelines"
+        }
+      ]
+    },
+    {
+      "name": "3-medical-impairments",
+      "title": "3 Medical Impairments",
+      "type": "dir",
+      "routePath": "3-medical-impairments",
+      "hasReadme": true,
+      "children": [
+        {
+          "name": "cardiovascular",
+          "title": "Cardiovascular",
+          "type": "dir",
+          "routePath": "3-medical-impairments/cardiovascular",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "arrhythmias.md",
+              "title": "Arrhythmias",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/arrhythmias"
+            },
+            {
+              "name": "cad_mi.md",
+              "title": "Cad Mi",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/cad_mi"
+            },
+            {
+              "name": "cardiomyopathy.md",
+              "title": "Cardiomyopathy",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/cardiomyopathy"
+            },
+            {
+              "name": "complex_arrhythmias.md",
+              "title": "Complex Arrhythmias",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/complex_arrhythmias"
+            },
+            {
+              "name": "congenital_heart_defects.md",
+              "title": "Congenital Heart Defects",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/congenital_heart_defects"
+            },
+            {
+              "name": "hypertension.md",
+              "title": "Hypertension",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/hypertension"
+            },
+            {
+              "name": "valve_disease.md",
+              "title": "Valve Disease",
+              "type": "file",
+              "routePath": "3-medical-impairments/cardiovascular/valve_disease"
+            }
+          ]
+        },
+        {
+          "name": "endocrine",
+          "title": "Endocrine",
+          "type": "dir",
+          "routePath": "3-medical-impairments/endocrine",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "adrenal_disorders.md",
+              "title": "Adrenal Disorders",
+              "type": "file",
+              "routePath": "3-medical-impairments/endocrine/adrenal_disorders"
+            },
+            {
+              "name": "pituitary_tumors.md",
+              "title": "Pituitary Tumors",
+              "type": "file",
+              "routePath": "3-medical-impairments/endocrine/pituitary_tumors"
+            },
+            {
+              "name": "thyroid_disorders.md",
+              "title": "Thyroid Disorders",
+              "type": "file",
+              "routePath": "3-medical-impairments/endocrine/thyroid_disorders"
+            }
+          ]
+        },
+        {
+          "name": "genito-urinary",
+          "title": "Genito Urinary",
+          "type": "dir",
+          "routePath": "3-medical-impairments/genito-urinary",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "ckd.md",
+              "title": "Ckd",
+              "type": "file",
+              "routePath": "3-medical-impairments/genito-urinary/ckd"
+            },
+            {
+              "name": "kidney_transplant.md",
+              "title": "Kidney Transplant",
+              "type": "file",
+              "routePath": "3-medical-impairments/genito-urinary/kidney_transplant"
+            },
+            {
+              "name": "proteinuria.md",
+              "title": "Proteinuria",
+              "type": "file",
+              "routePath": "3-medical-impairments/genito-urinary/proteinuria"
+            }
+          ]
+        },
+        {
+          "name": "gi-hepatic",
+          "title": "Gi Hepatic",
+          "type": "dir",
+          "routePath": "3-medical-impairments/gi-hepatic",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "bariatric_surgery.md",
+              "title": "Bariatric Surgery",
+              "type": "file",
+              "routePath": "3-medical-impairments/gi-hepatic/bariatric_surgery"
+            },
+            {
+              "name": "cirrhosis.md",
+              "title": "Cirrhosis",
+              "type": "file",
+              "routePath": "3-medical-impairments/gi-hepatic/cirrhosis"
+            },
+            {
+              "name": "elevated_liver_enzymes.md",
+              "title": "Elevated Liver Enzymes",
+              "type": "file",
+              "routePath": "3-medical-impairments/gi-hepatic/elevated_liver_enzymes"
+            },
+            {
+              "name": "hepatitis_bc.md",
+              "title": "Hepatitis Bc",
+              "type": "file",
+              "routePath": "3-medical-impairments/gi-hepatic/hepatitis_bc"
+            },
+            {
+              "name": "ibd.md",
+              "title": "Ibd",
+              "type": "file",
+              "routePath": "3-medical-impairments/gi-hepatic/ibd"
+            }
+          ]
+        },
+        {
+          "name": "immune-rheum",
+          "title": "Immune Rheum",
+          "type": "dir",
+          "routePath": "3-medical-impairments/immune-rheum",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "gout.md",
+              "title": "Gout",
+              "type": "file",
+              "routePath": "3-medical-impairments/immune-rheum/gout"
+            },
+            {
+              "name": "hiv.md",
+              "title": "Hiv",
+              "type": "file",
+              "routePath": "3-medical-impairments/immune-rheum/hiv"
+            },
+            {
+              "name": "lupus.md",
+              "title": "Lupus",
+              "type": "file",
+              "routePath": "3-medical-impairments/immune-rheum/lupus"
+            },
+            {
+              "name": "post_transplant.md",
+              "title": "Post Transplant",
+              "type": "file",
+              "routePath": "3-medical-impairments/immune-rheum/post_transplant"
+            },
+            {
+              "name": "ra.md",
+              "title": "Ra",
+              "type": "file",
+              "routePath": "3-medical-impairments/immune-rheum/ra"
+            }
+          ]
+        },
+        {
+          "name": "metabolic",
+          "title": "Metabolic",
+          "type": "dir",
+          "routePath": "3-medical-impairments/metabolic",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "metabolic_syndrome.md",
+              "title": "Metabolic Syndrome",
+              "type": "file",
+              "routePath": "3-medical-impairments/metabolic/metabolic_syndrome"
+            },
+            {
+              "name": "obesity.md",
+              "title": "Obesity",
+              "type": "file",
+              "routePath": "3-medical-impairments/metabolic/obesity"
+            },
+            {
+              "name": "type1_diabetes.md",
+              "title": "Type1 Diabetes",
+              "type": "file",
+              "routePath": "3-medical-impairments/metabolic/type1_diabetes"
+            },
+            {
+              "name": "type2_diabetes.md",
+              "title": "Type2 Diabetes",
+              "type": "file",
+              "routePath": "3-medical-impairments/metabolic/type2_diabetes"
+            }
+          ]
+        },
+        {
+          "name": "misc",
+          "title": "Misc",
+          "type": "dir",
+          "routePath": "3-medical-impairments/misc",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "congenital_defects.md",
+              "title": "Congenital Defects",
+              "type": "file",
+              "routePath": "3-medical-impairments/misc/congenital_defects"
+            },
+            {
+              "name": "connective_tissue.md",
+              "title": "Connective Tissue",
+              "type": "file",
+              "routePath": "3-medical-impairments/misc/connective_tissue"
+            },
+            {
+              "name": "covid_long_haul.md",
+              "title": "Covid Long Haul",
+              "type": "file",
+              "routePath": "3-medical-impairments/misc/covid_long_haul"
+            }
+          ]
+        },
+        {
+          "name": "neuro",
+          "title": "Neuro",
+          "type": "dir",
+          "routePath": "3-medical-impairments/neuro",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "dementia.md",
+              "title": "Dementia",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/dementia"
+            },
+            {
+              "name": "epilepsy.md",
+              "title": "Epilepsy",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/epilepsy"
+            },
+            {
+              "name": "multiple_sclerosis.md",
+              "title": "Multiple Sclerosis",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/multiple_sclerosis"
+            },
+            {
+              "name": "parkinsons.md",
+              "title": "Parkinsons",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/parkinsons"
+            },
+            {
+              "name": "restless_legs_syndrome.md",
+              "title": "Restless Legs Syndrome",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/restless_legs_syndrome"
+            },
+            {
+              "name": "stroke_tia.md",
+              "title": "Stroke Tia",
+              "type": "file",
+              "routePath": "3-medical-impairments/neuro/stroke_tia"
+            }
+          ]
+        },
+        {
+          "name": "oncology",
+          "title": "Oncology",
+          "type": "dir",
+          "routePath": "3-medical-impairments/oncology",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "bladder_cancer.md",
+              "title": "Bladder Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/bladder_cancer"
+            },
+            {
+              "name": "breast_cancer.md",
+              "title": "Breast Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/breast_cancer"
+            },
+            {
+              "name": "colorectal_cancer.md",
+              "title": "Colorectal Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/colorectal_cancer"
+            },
+            {
+              "name": "endometrial_cancer.md",
+              "title": "Endometrial Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/endometrial_cancer"
+            },
+            {
+              "name": "esophageal_cancer.md",
+              "title": "Esophageal Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/esophageal_cancer"
+            },
+            {
+              "name": "head_neck_cancer.md",
+              "title": "Head Neck Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/head_neck_cancer"
+            },
+            {
+              "name": "hematologic_malignancies.md",
+              "title": "Hematologic Malignancies",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/hematologic_malignancies"
+            },
+            {
+              "name": "kidney_cancer.md",
+              "title": "Kidney Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/kidney_cancer"
+            },
+            {
+              "name": "leukemia.md",
+              "title": "Leukemia",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/leukemia"
+            },
+            {
+              "name": "liver_cancer.md",
+              "title": "Liver Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/liver_cancer"
+            },
+            {
+              "name": "lung_cancer.md",
+              "title": "Lung Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/lung_cancer"
+            },
+            {
+              "name": "lymphoma.md",
+              "title": "Lymphoma",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/lymphoma"
+            },
+            {
+              "name": "ovarian_cancer.md",
+              "title": "Ovarian Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/ovarian_cancer"
+            },
+            {
+              "name": "pancreatic_cancer.md",
+              "title": "Pancreatic Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/pancreatic_cancer"
+            },
+            {
+              "name": "prostate_cancer.md",
+              "title": "Prostate Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/prostate_cancer"
+            },
+            {
+              "name": "skin_cancer.md",
+              "title": "Skin Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/skin_cancer"
+            },
+            {
+              "name": "specialized_cancers.md",
+              "title": "Specialized Cancers",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/specialized_cancers"
+            },
+            {
+              "name": "stomach_cancer.md",
+              "title": "Stomach Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/stomach_cancer"
+            },
+            {
+              "name": "thyroid_cancer.md",
+              "title": "Thyroid Cancer",
+              "type": "file",
+              "routePath": "3-medical-impairments/oncology/thyroid_cancer"
+            }
+          ]
+        },
+        {
+          "name": "psych",
+          "title": "Psych",
+          "type": "dir",
+          "routePath": "3-medical-impairments/psych",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "adhd.md",
+              "title": "Adhd",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/adhd"
+            },
+            {
+              "name": "anxiety",
+              "title": "Anxiety",
+              "type": "dir",
+              "routePath": "3-medical-impairments/psych/anxiety",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "anxiety.md",
+              "title": "Anxiety",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/anxiety"
+            },
+            {
+              "name": "autism_spectrum_disorder.md",
+              "title": "Autism Spectrum Disorder",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/autism_spectrum_disorder"
+            },
+            {
+              "name": "bipolar",
+              "title": "Bipolar",
+              "type": "dir",
+              "routePath": "3-medical-impairments/psych/bipolar",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "bipolar.md",
+              "title": "Bipolar",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/bipolar"
+            },
+            {
+              "name": "bipolar_disorder.md",
+              "title": "Bipolar Disorder",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/bipolar_disorder"
+            },
+            {
+              "name": "depression",
+              "title": "Depression",
+              "type": "dir",
+              "routePath": "3-medical-impairments/psych/depression",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "depression.md",
+              "title": "Depression",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/depression"
+            },
+            {
+              "name": "eating_disorders.md",
+              "title": "Eating Disorders",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/eating_disorders"
+            },
+            {
+              "name": "insomnia.md",
+              "title": "Insomnia",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/insomnia"
+            },
+            {
+              "name": "ocd.md",
+              "title": "Ocd",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/ocd"
+            },
+            {
+              "name": "ptsd.md",
+              "title": "Ptsd",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/ptsd"
+            },
+            {
+              "name": "schizophrenia.md",
+              "title": "Schizophrenia",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/schizophrenia"
+            },
+            {
+              "name": "substance_use",
+              "title": "Substance Use",
+              "type": "dir",
+              "routePath": "3-medical-impairments/psych/substance_use",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "substance_use.md",
+              "title": "Substance Use",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/substance_use"
+            },
+            {
+              "name": "suicide_attempt.md",
+              "title": "Suicide Attempt",
+              "type": "file",
+              "routePath": "3-medical-impairments/psych/suicide_attempt"
+            },
+            {
+              "name": "suicide_history",
+              "title": "Suicide History",
+              "type": "dir",
+              "routePath": "3-medical-impairments/psych/suicide_history",
+              "hasReadme": false,
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "respiratory",
+          "title": "Respiratory",
+          "type": "dir",
+          "routePath": "3-medical-impairments/respiratory",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "asthma",
+              "title": "Asthma",
+              "type": "dir",
+              "routePath": "3-medical-impairments/respiratory/asthma",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "asthma.md",
+              "title": "Asthma",
+              "type": "file",
+              "routePath": "3-medical-impairments/respiratory/asthma"
+            },
+            {
+              "name": "copd",
+              "title": "Copd",
+              "type": "dir",
+              "routePath": "3-medical-impairments/respiratory/copd",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "copd.md",
+              "title": "Copd",
+              "type": "file",
+              "routePath": "3-medical-impairments/respiratory/copd"
+            },
+            {
+              "name": "sleep_apnea",
+              "title": "Sleep Apnea",
+              "type": "dir",
+              "routePath": "3-medical-impairments/respiratory/sleep_apnea",
+              "hasReadme": false,
+              "children": []
+            },
+            {
+              "name": "sleep_apnea.md",
+              "title": "Sleep Apnea",
+              "type": "file",
+              "routePath": "3-medical-impairments/respiratory/sleep_apnea"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4-evidence-screening",
+      "title": "4 Evidence Screening",
+      "type": "dir",
+      "routePath": "4-evidence-screening",
+      "hasReadme": true,
+      "children": [
+        {
+          "name": "diagnostic_tests.md",
+          "title": "Diagnostic Tests",
+          "type": "file",
+          "routePath": "4-evidence-screening/diagnostic_tests"
+        },
+        {
+          "name": "family_history.md",
+          "title": "Family History",
+          "type": "file",
+          "routePath": "4-evidence-screening/family_history"
+        },
+        {
+          "name": "lab_values.md",
+          "title": "Lab Values",
+          "type": "file",
+          "routePath": "4-evidence-screening/lab_values"
+        },
+        {
+          "name": "prescription_drugs.md",
+          "title": "Prescription Drugs",
+          "type": "file",
+          "routePath": "4-evidence-screening/prescription_drugs"
+        },
+        {
+          "name": "vital_signs_build.md",
+          "title": "Vital Signs Build",
+          "type": "file",
+          "routePath": "4-evidence-screening/vital_signs_build"
+        }
+      ]
+    },
+    {
+      "name": "5-appendices",
+      "title": "5 Appendices",
+      "type": "dir",
+      "routePath": "5-appendices",
+      "hasReadme": true,
+      "children": [
+        {
+          "name": "glossary",
+          "title": "Glossary",
+          "type": "dir",
+          "routePath": "5-appendices/glossary",
+          "hasReadme": false,
+          "children": []
+        },
+        {
+          "name": "glossary.md",
+          "title": "Glossary",
+          "type": "file",
+          "routePath": "5-appendices/glossary"
+        },
+        {
+          "name": "reinsurance_excerpts",
+          "title": "Reinsurance Excerpts",
+          "type": "dir",
+          "routePath": "5-appendices/reinsurance_excerpts",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "facultative_guidelines.md",
+              "title": "Facultative Guidelines",
+              "type": "file",
+              "routePath": "5-appendices/reinsurance_excerpts/facultative_guidelines"
+            },
+            {
+              "name": "reinsurer_requirements.md",
+              "title": "Reinsurer Requirements",
+              "type": "file",
+              "routePath": "5-appendices/reinsurance_excerpts/reinsurer_requirements"
+            },
+            {
+              "name": "treaty_summary.md",
+              "title": "Treaty Summary",
+              "type": "file",
+              "routePath": "5-appendices/reinsurance_excerpts/treaty_summary"
+            }
+          ]
+        },
+        {
+          "name": "sample_letters",
+          "title": "Sample Letters",
+          "type": "dir",
+          "routePath": "5-appendices/sample_letters",
+          "hasReadme": true,
+          "children": [
+            {
+              "name": "aps_request.md",
+              "title": "Aps Request",
+              "type": "file",
+              "routePath": "5-appendices/sample_letters/aps_request"
+            },
+            {
+              "name": "decline_letter.md",
+              "title": "Decline Letter",
+              "type": "file",
+              "routePath": "5-appendices/sample_letters/decline_letter"
+            },
+            {
+              "name": "postpone_letter.md",
+              "title": "Postpone Letter",
+              "type": "file",
+              "routePath": "5-appendices/sample_letters/postpone_letter"
+            },
+            {
+              "name": "requirements_letter.md",
+              "title": "Requirements Letter",
+              "type": "file",
+              "routePath": "5-appendices/sample_letters/requirements_letter"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "table_of_contents.md",
+      "title": "Table Of Contents",
+      "type": "file",
+      "routePath": "table_of_contents"
+    }
+  ]
+}
