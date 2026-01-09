@@ -41,22 +41,42 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 
 # ✨ Key Features
 
-## 📄 Document Analysis
-- Page-by-page analysis of insurance applications and supporting documents
-- Efficient batch processing of multiple pages at a time to optimize performance and resource usage
-- Intelligent extraction of key data points from each page, enabling comprehensive analysis without token limitations
-- Automatic classification of document sections with useful bookmarks
+## 📄 Data Extraction
+- Converts PDF documents into images and processes each page using AI vision capabilities
+- Automatically classifies each page into sub-document types (e.g., "Applicant Information", "Medical History", "Lab Results", "Prescription History")
+- Extracts all key-value pairs from each page in a structured format
+- Groups related pages together under their document type for easy navigation
+- Maintains context across pages to ensure consistent classification throughout the document
 
-![dashboard screenshot](assets/screen1.png)
+![dashboard screenshot](assets/extraction-tab.png)
 
 ## 📊 Underwriter Analysis
-- AI-driven analysis of the document to detect discrepancies and extract underwriting-relevant insights
-- Evaluation of medical history, medications, and lifestyle factors to identify risk indicators
-- Automated identification of potential risk factors and summary of key findings
-- Highlighting of areas requiring additional review and cross-referencing of information across sections
-- Optional integration with customer's proprietary underwriting manuals for specialized insights
+- AI-powered comprehensive document review that summarizes the application and its purpose
+- Identifies key risks with severity ratings (Low/Medium/High) and references to source pages
+- Detects discrepancies and inconsistencies across document sections
+- Generates medical timelines for life insurance or property assessments for P&C applications
+- Formulates recommendations (approve, decline, request more info) based on findings
+- Highlights missing information critical for underwriting decisions
 
-![underwriter analysis screenshot](assets/screen2.png)
+![underwriter analysis screenshot](assets/underwriter-tab.png)
+
+## 🔬 Impairment Detection
+- Intelligent scanning of medical records, prescription history, lab results, and MIB reports
+- Automatically identifies health conditions relevant to underwriting (e.g., hypertension, diabetes)
+- Cross-references findings against the underwriting manual to determine what factors matter for each condition
+- Consolidates evidence from multiple sources and flags discrepancies between self-reported and documented information
+- Provides a narrative summary explaining what was found and why it matters
+
+![impairment detection screenshot](assets/impairments-tab.png)
+
+## 📊 Risk Scoring
+- Calculates a numerical risk score based on detected impairments and underwriting guidelines
+- Looks up rating tables from the underwriting manual to determine point values for each condition
+- Accounts for modifying factors like age, medication compliance, and disease control
+- Provides detailed reasoning explaining how each score was calculated
+- Aggregates individual impairment scores into an overall risk assessment
+
+![underwriter analysis screenshot](assets/scoring-tab.png)
 
 ## 💬 Chat Interface
 - Natural language chat interface for querying document contents
@@ -65,7 +85,7 @@ This demo addresses a key challenge in life insurance underwriting: the time-con
 - Quick navigation to relevant document sections using markdown links
 - Contextual understanding of underwriting terminology for detailed inquiries
 
-![underwriter analysis screenshot](assets/screen3.png)
+![underwriter analysis screenshot](assets/chat-tab.png)
 
 ## 📁 Sample Documents
 

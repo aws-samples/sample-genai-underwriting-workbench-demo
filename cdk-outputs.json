@@ -1,0 +1,16 @@
+{
+  "AWS-GenAI-Underwriting": {
+    "ActLambdaArn": "arn:aws:lambda:us-east-1:543999415209:function:underwriting-ai-v2-act",
+    "DocumentBucketName": "uw-ai-v2-543999415209-landing",
+    "UnderwritingApiEndpoint978B36ED": "https://mlmnzrwqtl.execute-api.us-east-1.amazonaws.com/prod/",
+    "ClassifyLambdaArn": "arn:aws:lambda:us-east-1:543999415209:function:underwriting-ai-v2-classify",
+    "AnalyzeLambdaArn": "arn:aws:lambda:us-east-1:543999415209:function:underwriting-ai-v2-analyze",
+    "ApiEndpoint": "https://mlmnzrwqtl.execute-api.us-east-1.amazonaws.com/prod/",
+    "StateMachineArn": "arn:aws:states:us-east-1:543999415209:stateMachine:underwriting-ai-v2-workflow",
+    "SubmissionsTableName": "underwriting-ai-v2-submissions",
+    "MockOutputBucketName": "uw-ai-v2-543999415209-mock-output",
+    "BedrockExtractLambdaArn": "arn:aws:lambda:us-east-1:543999415209:function:underwriting-ai-v2-bedrock-extract",
+    "FrontendURL": "https://d3l1p45f71xyrg.cloudfront.net",
+    "AnalysisTableName": "underwriting-ai-v2-analysis"
+  }
+}
