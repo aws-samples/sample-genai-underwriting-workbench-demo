@@ -199,7 +199,7 @@ def lambda_handler(event, context):
         response = bedrock_runtime.converse(
             modelId=os.environ.get('BEDROCK_ANALYSIS_MODEL_ID', 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'),
             messages=[{"role": "user", "content": [{"text": analysis_prompt_text}]}],
-            inferenceConfig={"maxTokens": 4096, "temperature": 0.05}
+            inferenceConfig={"maxTokens": 16384, "temperature": 0.05}
         )
         print("[lambda_handler] Bedrock response received")
     except Exception as e:
@@ -217,9 +217,14 @@ def lambda_handler(event, context):
     except Exception:
         match = re.search(r'\{[\s\S]*\}', text)
         if match:
-            analysis_json = json.loads(match.group(0))
+            try:
+                analysis_json = json.loads(match.group(0))
+            except Exception as e2:
+                print(f"[lambda_handler] JSON parse failed after regex extraction: {e2}")
+                print(f"[lambda_handler] Raw assistant text:\n{text}")
+                raise
         else:
-            print("[lambda_handler] Invalid assistant JSON, no match found")
+            print(f"[lambda_handler] Invalid assistant JSON, no match found. Raw assistant text:\n{text}")
             return {"status": "ERROR", "message": "Invalid assistant JSON", "analysis_data": {}}
 
     # --- 6) Validate schema ---
