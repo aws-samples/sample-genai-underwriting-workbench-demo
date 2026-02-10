@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../utils/apiClient'
+import { exportToPdf } from '../utils/pdfExport'
 import '../styles/JobPage.css'
 import { useNavigate } from 'react-router-dom'
 import { HowItWorksDrawer } from './HowItWorksDrawer'
@@ -23,7 +24,7 @@ import {
   faShieldAlt, faGavel, faList, faClipboardCheck,
   faSpinner, faHourglassHalf, faTimesCircle, faPrint, faSyncAlt,
   faBook,
-  faRobot, faEnvelope, faTimes
+  faRobot, faEnvelope, faTimes, faDownload
 } from '@fortawesome/free-solid-svg-icons'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -323,6 +324,11 @@ export function JobPage({ jobId }: JobPageProps) {
   // Agent Action state - ADDED
   const [agentActionData, setAgentActionData] = useState<AgentActionData | null>(null);
   const [showAgentActionPopup, setShowAgentActionPopup] = useState(false);
+
+  // PDF Export state and refs
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+  const detectionContentRef = useRef<HTMLDivElement>(null);
+  const scoringContentRef = useRef<HTMLDivElement>(null);
 
   // (removed unused currentPdfUrlRef)
 
@@ -866,6 +872,24 @@ export function JobPage({ jobId }: JobPageProps) {
     );
   };
 
+  // PDF Export handler
+  const handleExportPdf = async (contentRef: React.RefObject<HTMLDivElement>, title: string) => {
+    if (!contentRef.current) return;
+    setIsPdfGenerating(true);
+    try {
+      await exportToPdf(contentRef.current, {
+        title,
+        jobId: jobId,
+        documentName: analysisData?.filename,
+        filename: `${title.toLowerCase().replace(/\s+/g, '-')}-${jobId.slice(0, 8)}.pdf`
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsPdfGenerating(false);
+    }
+  };
+
   const renderDetection = () => {
     if (!detection) return <p>No detection results.</p>
     const items = detection.impairments || []
@@ -879,6 +903,17 @@ export function JobPage({ jobId }: JobPageProps) {
 
     return (
       <div className="detection-tab">
+        <div className="tab-header-actions">
+          <button 
+            className="pdf-download-btn" 
+            onClick={() => handleExportPdf(detectionContentRef, 'Impairment Detection Report')}
+            disabled={isPdfGenerating}
+          >
+            <FontAwesomeIcon icon={isPdfGenerating ? faSpinner : faDownload} spin={isPdfGenerating} />
+            {isPdfGenerating ? t('jobPage.download.generating', 'Generating...') : t('jobPage.download.pdf', 'Download PDF')}
+          </button>
+        </div>
+        <div ref={detectionContentRef}>
         {!!detection.narrative && (
           <div className="narrative-card">
             <h3><FontAwesomeIcon icon={faClipboardCheck} /> Summary Narrative</h3>
@@ -940,6 +975,7 @@ export function JobPage({ jobId }: JobPageProps) {
             )}
           </div>
         )})}
+        </div>
       </div>
     )
   }
@@ -961,6 +997,17 @@ export function JobPage({ jobId }: JobPageProps) {
 
     return (
       <div className="scoring-tab">
+        <div className="tab-header-actions">
+          <button 
+            className="pdf-download-btn" 
+            onClick={() => handleExportPdf(scoringContentRef, 'Risk Scoring Report')}
+            disabled={isPdfGenerating}
+          >
+            <FontAwesomeIcon icon={isPdfGenerating ? faSpinner : faDownload} spin={isPdfGenerating} />
+            {isPdfGenerating ? t('jobPage.download.generating', 'Generating...') : t('jobPage.download.pdf', 'Download PDF')}
+          </button>
+        </div>
+        <div ref={scoringContentRef}>
         <div className="score-summary-card">
           <h3><FontAwesomeIcon icon={faCheckCircle} /> Overall Score</h3>
           <div className="score-summary-content">
@@ -986,6 +1033,7 @@ export function JobPage({ jobId }: JobPageProps) {
             )}
           </div>
         ))}
+        </div>
       </div>
     )
   }
