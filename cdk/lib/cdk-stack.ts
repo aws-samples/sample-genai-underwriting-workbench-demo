@@ -20,6 +20,8 @@ import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as opensearchserverless from 'aws-cdk-lib/aws-opensearchserverless';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import * as lambdaPython from '@aws-cdk/aws-lambda-python-alpha';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as cognitoIdentityPool from '@aws-cdk/aws-cognito-identitypool-alpha';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -867,15 +869,43 @@ export class CdkStack extends cdk.Stack {
     const apiHandlerIntegration = new apigateway.LambdaIntegration(apiHandlerLambda);
     const chatLambdaIntegration = new apigateway.LambdaIntegration(chatLambda);
 
-    // Jobs and upload endpoints
-    jobsResource.addMethod('GET', apiHandlerIntegration);
-    jobByIdResource.addMethod('GET', apiHandlerIntegration);
-    documentUrlResource.addMethod('GET', apiHandlerIntegration);
-    uploadResource.addMethod('POST', apiHandlerIntegration);
-    batchUploadResource.addMethod('POST', apiHandlerIntegration);
-    statusResource.addMethod('GET', apiHandlerIntegration);
-    chatByJobIdResource.addMethod('POST', chatLambdaIntegration);
-    policyResource.addMethod('GET', apiHandlerIntegration);
+    // --- Cognito User Pool ---
+    const projectId = this.node.tryGetContext('projectId') as string;
+    const midway = this.node.tryGetContext('midway') as boolean;
+
+    const userPool = new cognito.UserPool(this, 'UserPool', {
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      ...(midway
+        ? {
+            customAttributes: {
+              posix: new cognito.StringAttribute({ mutable: true }),
+              ldap: new cognito.StringAttribute({ mutable: true }),
+            },
+          }
+        : {}),
+    });
+
+    // Cognito Authorizer for API Gateway
+    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+      cognitoUserPools: [userPool],
+    });
+
+    const authorizerOptions: apigateway.MethodOptions = {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    };
+
+    // Jobs and upload endpoints (all protected by Cognito authorizer)
+    jobsResource.addMethod('GET', apiHandlerIntegration, authorizerOptions);
+    jobByIdResource.addMethod('GET', apiHandlerIntegration, authorizerOptions);
+    documentUrlResource.addMethod('GET', apiHandlerIntegration, authorizerOptions);
+    uploadResource.addMethod('POST', apiHandlerIntegration, authorizerOptions);
+    batchUploadResource.addMethod('POST', apiHandlerIntegration, authorizerOptions);
+    statusResource.addMethod('GET', apiHandlerIntegration, authorizerOptions);
+    chatByJobIdResource.addMethod('POST', chatLambdaIntegration, authorizerOptions);
+    policyResource.addMethod('GET', apiHandlerIntegration, authorizerOptions);
 
     // Create S3 bucket for frontend
     const websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
@@ -959,6 +989,117 @@ export class CdkStack extends cdk.Stack {
       ],
     });
 
+    // --- Cognito OIDC Provider (conditional on midway) ---
+    let identityProviderName: string | undefined;
+    if (midway) {
+      const oidcProvider = new cognito.UserPoolIdentityProviderOidc(this, 'FederateOidcProvider', {
+        userPool,
+        name: 'AmazonFederate',
+        clientId: projectId,
+        clientSecret: cdk.SecretValue.secretsManager(
+          `${projectId}-federateSecret`,
+        ).unsafeUnwrap(),
+        attributeRequestMethod: cognito.OidcAttributeRequestMethod.GET,
+        issuerUrl: 'https://idp.federate.amazon.com',
+        scopes: ['openid'],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.other('EMAIL'),
+          custom: {
+            'custom:posix': cognito.ProviderAttribute.other('POSIX_GROUPS'),
+          },
+        },
+      });
+      identityProviderName = oidcProvider.providerName;
+    }
+
+    // --- Cognito User Pool Client ---
+    const callbackUrls = [
+      `https://${distribution.distributionDomainName}`,
+      'http://localhost:5173',
+    ];
+    const logoutUrls = [
+      `https://${distribution.distributionDomainName}`,
+      'http://localhost:5173',
+    ];
+
+    const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
+      userPool,
+      generateSecret: false,
+      ...(midway
+        ? {
+            authFlows: { custom: true, userSrp: true },
+            oAuth: {
+              flows: { authorizationCodeGrant: true, implicitCodeGrant: false },
+              scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+              callbackUrls,
+              logoutUrls,
+            },
+            supportedIdentityProviders: [
+              cognito.UserPoolClientIdentityProvider.custom(identityProviderName!),
+            ],
+            accessTokenValidity: cdk.Duration.minutes(10),
+            idTokenValidity: cdk.Duration.hours(1),
+            refreshTokenValidity: cdk.Duration.hours(10),
+          }
+        : {
+            authFlows: { userSrp: true },
+            oAuth: {
+              flows: { authorizationCodeGrant: true },
+              scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+              callbackUrls,
+              logoutUrls,
+            },
+            accessTokenValidity: cdk.Duration.minutes(10),
+            idTokenValidity: cdk.Duration.hours(1),
+            refreshTokenValidity: cdk.Duration.hours(10),
+          }),
+    });
+
+    // --- Cognito Domain ---
+    // Cognito domain prefixes cannot start with "aws-", so strip it
+    const domainPrefix = projectId.replace(/^aws-/, '');
+    const userPoolDomain = userPool.addDomain('UserPoolDomain', {
+      cognitoDomain: {
+        domainPrefix,
+      },
+    });
+
+    // --- Identity Pool ---
+    const identityPool = new cognitoIdentityPool.IdentityPool(this, 'IdentityPool', {
+      allowUnauthenticatedIdentities: false,
+      authenticationProviders: {
+        userPools: [
+          new cognitoIdentityPool.UserPoolAuthenticationProvider({
+            userPool,
+            userPoolClient,
+          }),
+        ],
+      },
+    });
+
+    // --- Runtime config.json deployment ---
+    // Deployed as a separate BucketDeployment with prune: false so it
+    // doesn't delete the frontend files. Uses Source.jsonData to avoid
+    // CDK token resolution issues with Docker bundling.
+    const userPoolDomainUrl = `https://${userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`;
+
+    new s3deploy.BucketDeployment(this, 'DeployConfig', {
+      sources: [
+        s3deploy.Source.jsonData('config.json', {
+          userPoolId: userPool.userPoolId,
+          userPoolClientId: userPoolClient.userPoolClientId,
+          identityPoolId: identityPool.identityPoolId,
+          userPoolDomainUrl,
+          callbackUrl: `https://${distribution.distributionDomainName}`,
+          region: this.region,
+        }),
+      ],
+      destinationBucket: websiteBucket,
+      distribution,
+      distributionPaths: ['/config.json'],
+      prune: false,
+    });
+
     // Deploy frontend to S3
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend'), {
@@ -1002,6 +1143,26 @@ export class CdkStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'KnowledgeBaseId', {
       value: knowledgeBase.attrKnowledgeBaseId,
       description: 'Bedrock Knowledge Base ID',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      description: 'Cognito User Pool ID',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
+      value: userPoolClient.userPoolClientId,
+      description: 'Cognito User Pool Client ID',
+    });
+
+    new cdk.CfnOutput(this, 'IdentityPoolId', {
+      value: identityPool.identityPoolId,
+      description: 'Cognito Identity Pool ID',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolDomainUrl', {
+      value: userPoolDomainUrl,
+      description: 'Cognito User Pool Domain URL',
     });
   }
 }
