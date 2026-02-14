@@ -18,6 +18,7 @@ bedrock_retry_config = Config(
 # Initialize AWS clients
 dynamodb = boto3.client('dynamodb')
 bedrock_runtime = boto3.client(service_name='bedrock-runtime', config=bedrock_retry_config)
+s3 = boto3.client('s3')
 
 # Environment variables
 JOBS_TABLE_NAME = os.environ.get('JOBS_TABLE_NAME')
@@ -191,9 +192,18 @@ def process_chat(job_id, messages):
         analysis_output_json = item.get('analysisOutputJsonStr', {}).get('S', '{}')
         
         try:
-            extracted_data = json.loads(extracted_data_json)
+            # Check if extracted_data_json is an S3 path
+            if extracted_data_json.startswith('s3://'):
+                s3_path = extracted_data_json.replace('s3://', '')
+                bucket, key = s3_path.split('/', 1)
+                response = s3.get_object(Bucket=bucket, Key=key)
+                extracted_data = json.loads(response['Body'].read().decode('utf-8'))
+            else:
+                extracted_data = json.loads(extracted_data_json)
+            
             analysis_output = json.loads(analysis_output_json)
-        except json.JSONDecodeError:
+        except Exception as e:
+            print(f"Error loading extracted/analysis data: {e}")
             extracted_data = {}
             analysis_output = {}
         

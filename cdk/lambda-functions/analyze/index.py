@@ -147,14 +147,27 @@ def lambda_handler(event, context):
     if job_id and DB_TABLE:
         try:
             ts = datetime.now(timezone.utc).isoformat()
+            
+            # Always store extracted data in S3
+            s3_key = f"{job_id}/merged/merged.json"
+            s3_client = get_s3_client()
+            s3_client.put_object(
+                Bucket=EXTRACTION_BUCKET,
+                Key=s3_key,
+                Body=json.dumps(extracted_data),
+                ContentType='application/json'
+            )
+            s3_path = f"s3://{EXTRACTION_BUCKET}/{s3_key}"
+            print(f"[lambda_handler] Stored extracted data in S3: {s3_path}")
+            
             dynamodb_client.update_item(
                 TableName=DB_TABLE,
                 Key={'jobId': {'S': job_id}},
                 UpdateExpression="SET #dt = :dt, #ed = :ed, #et = :et",
                 ExpressionAttributeNames={'#dt': 'documentType', '#ed': 'extractedDataJsonStr', '#et': 'extractionTimestamp'},
-                ExpressionAttributeValues={':dt': {'S': document_type}, ':ed': {'S': json.dumps(extracted_data)}, ':et': {'S': ts}}
+                ExpressionAttributeValues={':dt': {'S': document_type}, ':ed': {'S': s3_path}, ':et': {'S': ts}}
             )
-            print(f"[lambda_handler] Persisted extractedDataJsonStr for job {job_id}")
+            print(f"[lambda_handler] Persisted S3 path to extractedDataJsonStr for job {job_id}")
         except Exception as e:
             print(f"Error processing input event: {e}")
             analysis_json["message"] = f"Error processing input event: {str(e)}"
@@ -162,7 +175,30 @@ def lambda_handler(event, context):
 
     # --- 3) Construct Analysis Prompt ---
     consolidated = json.dumps(extracted_data, indent=2)
-    print(f"[lambda_handler] Building analysis prompt (length {len(consolidated)} chars)")
+    print(f"[lambda_handler] Original extracted data size: {len(consolidated)} chars")
+    
+    # Sample data if too large (200K tokens ~= 800KB, target 180K tokens = 720KB for safety)
+    max_chars = 720000
+    if len(consolidated) > max_chars:
+        print(f"[lambda_handler] Data exceeds {max_chars} chars, sampling pages...")
+        # Calculate sampling ratio
+        target_ratio = max_chars / len(consolidated)
+        print(f"[lambda_handler] Sampling ratio: {target_ratio:.2f}")
+        
+        sampled_data = {}
+        for doc_type, pages in extracted_data.items():
+            if isinstance(pages, list) and len(pages) > 0:
+                # Keep proportional number of pages (at least 1, evenly distributed)
+                pages_to_keep = max(1, int(len(pages) * target_ratio))
+                sampled_data[doc_type] = pages[:pages_to_keep]
+                if len(pages) > pages_to_keep:
+                    sampled_data[doc_type].append({"_note": f"[{len(pages) - pages_to_keep} additional pages omitted]"})
+            else:
+                sampled_data[doc_type] = pages
+        
+        consolidated = json.dumps(sampled_data, indent=2)
+        print(f"[lambda_handler] Sampled data size: {len(consolidated)} chars")
+    
     analysis_prompt_text = f"""You are an expert insurance underwriter tasked with analyzing extracted document information.
         The following data was extracted from an insurance document:
         <extracted_data>
