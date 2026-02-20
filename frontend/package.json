@@ -24,7 +24,7 @@
     "i18next": "^23.16.4",
     "i18next-browser-languagedetector": "^7.2.1",
     "i18next-http-backend": "^2.6.2",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.2.0",
     "lodash": "^4.17.21",
     "mermaid": "^11.10.0",
     "pdfjs-dist": "5.3.31",
