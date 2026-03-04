@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useAuthenticator } from '@aws-amplify/ui-react'
+import Login from './components/Login'
 import ManualPage from './components/ManualPage'
 import { LanguageSelector } from './components/LanguageSelector'
 import { apiClient } from './utils/apiClient'
@@ -742,7 +744,7 @@ function JobsList() {
   );
 }
 
-function App() {
+function AppContent() {
   return (
     <Router>
       <Routes>
@@ -756,13 +758,31 @@ function App() {
           <JobPageWrapper />
         } />
         <Route path="/manual/*" element={<ManualPage />} />
-        <Route 
-          path="/:section(1-foundations|2-non-medical-factors|3-medical-impairments|4-evidence-screening|5-appendices)/*" 
-          element={<ManualPage />} 
+        <Route
+          path="/:section(1-foundations|2-non-medical-factors|3-medical-impairments|4-evidence-screening|5-appendices)/*"
+          element={<ManualPage />}
         />
       </Routes>
     </Router>
   )
+}
+
+function App() {
+  const { authStatus } = useAuthenticator((context) => [context.authStatus])
+
+  if (authStatus === 'configuring') {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Loading...</div>
+      </div>
+    )
+  }
+
+  if (authStatus !== 'authenticated') {
+    return <Login />
+  }
+
+  return <AppContent />
 }
 
 export default App
