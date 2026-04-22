@@ -23,7 +23,7 @@
     "html2canvas": "^1.4.1",
     "i18next": "^23.16.4",
     "i18next-browser-languagedetector": "^7.2.1",
-    "i18next-http-backend": "^2.6.2",
+    "i18next-http-backend": "^3.0.5",
     "jspdf": "^3.0.4",
     "lodash": "^4.17.21",
     "mermaid": "^11.10.0",
