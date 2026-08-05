@@ -238,14 +238,18 @@
       "evidence": "Evidence",
       "scoringFactors": "Scoring Factors",
       "discrepancies": "Discrepancies",
-      "viewGuidelines": "View Guidelines for {{name}}"
+      "viewGuidelines": "View Guidelines for {{name}}",
+      "guidelines": "Guidelines"
     },
     "scoring": {
       "noResults": "No scoring results.",
       "noImpairments": "No impairments scored.",
       "overallScore": "Overall Score",
       "impairmentScores": "Impairment Scores",
-      "reason": "Reason"
+      "reason": "Reason",
+      "overallLabel": "Overall score",
+      "overallSubline_one": "Sum of impairment debits across {{count}} finding",
+      "overallSubline_other": "Sum of impairment debits across {{count}} findings"
     },
     "chat": {
       "greeting": "Hi! I'm your AI assistant. I've analyzed this document and can help answer any questions you have about it.",
@@ -257,7 +261,17 @@
       "typing": "Typing...",
       "error": "Chat error. Please try again.",
       "userAvatar": "U",
-      "aiAvatar": "AI"
+      "aiAvatar": "AI",
+      "suggestions": {
+        "summarize": "Summarize medical history",
+        "discrepancies": "List all discrepancies",
+        "score": "Explain the score"
+      },
+      "suggestionsPropertyCasualty": {
+        "summarize": "Summarize property details",
+        "discrepancies": "List all discrepancies",
+        "score": "Explain the score"
+      }
     },
     "agentAction": {
       "title": "AI Agent Action Complete",
@@ -337,7 +351,26 @@
       },
       "processing": "Processing",
       "unknownStatus": "Status: {{status}}"
-    }
+    },
+    "jobLabel": "Job",
+    "subline": "{{filename}} · {{pages}} pages · uploaded {{uploaded}}",
+    "sublineNoPages": "{{filename}} · uploaded {{uploaded}}",
+    "badges": {
+      "life": "Life Insurance",
+      "propertyCasualty": "Property & Casualty"
+    },
+    "agentToast": {
+      "title": "AI Agent Action Complete",
+      "subtitle": "Our AI agent has processed your document and taken action",
+      "emailSent": "Email Sent! The agent has sent an email based on the document analysis.",
+      "reviewed": "Application Reviewed: the agent has determined this application requires review.",
+      "actionTaken": "Action Taken: the agent has completed processing this document.",
+      "viewDetails": "View Details",
+      "close": "Close notification"
+    },
+    "find": "Find",
+    "zoomIn": "Zoom in",
+    "rotate": "Rotate"
   },
   "landing": {
     "hero": {
