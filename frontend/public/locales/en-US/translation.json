@@ -19,7 +19,10 @@
     "title": "GenAI Underwriting Workbench",
     "uploadNew": "Upload New",
     "viewAllJobs": "View All Jobs",
-    "underwritingManual": "Underwriting Manual"
+    "underwritingManual": "Underwriting Manual",
+    "jobs": "Jobs",
+    "manual": "Manual",
+    "upload": "Upload"
   },
   "upload": {
     "title": "Upload Documents",
@@ -118,6 +121,23 @@
     "jobId": "ID: {{id}}",
     "status": {
       "completed": "Completed",
+      "inProgress": "In Progress",
+      "failed": "Failed"
+    },
+    "heading": "Underwriting jobs",
+    "subtitle_one": "{{count}} submission",
+    "subtitle_other": "{{count}} submissions",
+    "subtitleAllComplete": "{{count}} submissions · all analyses complete",
+    "searchPlaceholder": "Search by Job ID or filename",
+    "noResults": "No jobs match your search.",
+    "columns": {
+      "jobId": "JOB ID",
+      "document": "DOCUMENT",
+      "uploaded": "UPLOADED",
+      "status": "STATUS"
+    },
+    "statusLabel": {
+      "complete": "Complete",
       "inProgress": "In Progress",
       "failed": "Failed"
     }
@@ -318,6 +338,42 @@
       "processing": "Processing",
       "unknownStatus": "Status: {{status}}"
     }
+  },
+  "landing": {
+    "hero": {
+      "headingLife": "Streamline Your Life Insurance Underwriting",
+      "headingPropertyCasualty": "Streamline Your Property & Casualty Underwriting",
+      "subheadingLife": "Turn complex application packets into underwriting decisions — extracted, analyzed, and scored automatically.",
+      "subheadingPropertyCasualty": "Turn complex ACORD submissions into underwriting decisions — extracted, analyzed, and scored automatically."
+    },
+    "capabilities": {
+      "documentAnalysis": {
+        "title": "Document Analysis",
+        "bodyLife": "Complete application packets, APS and lab reports classified on ingest.",
+        "bodyPropertyCasualty": "Complete P&C packets, ACORD forms and inspections classified on ingest."
+      },
+      "analysis": {
+        "titleLife": "Underwriter Analysis",
+        "titlePropertyCasualty": "Property Assessment",
+        "bodyLife": "Mortality risk, medical timelines and cross-document discrepancies.",
+        "bodyPropertyCasualty": "Property risk, environmental exposure and cross-document discrepancies."
+      },
+      "interactiveAssistant": {
+        "title": "Interactive Assistant",
+        "bodyLife": "Ask questions across the whole submission and get sourced answers.",
+        "bodyPropertyCasualty": "Ask questions across valuations, claims history and inspection reports."
+      }
+    },
+    "uploadCard": {
+      "title": "Upload documents",
+      "caption": "PDF only. Multiple files supported.",
+      "insuranceType": "Insurance type",
+      "lifeInsurance": "Life Insurance",
+      "propertyCasualty": "Property & Casualty",
+      "dropzone": "Click to select or drag PDFs here",
+      "analyze": "Analyze document",
+      "analyze_plural": "Analyze {{count}} documents",
+      "removeFile": "Remove file"
+    }
   }
 }
-
