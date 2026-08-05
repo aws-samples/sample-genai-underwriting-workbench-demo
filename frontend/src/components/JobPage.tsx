@@ -541,7 +541,7 @@ export function JobPage({ jobId }: JobPageProps) {
   return (
     <PageContext.Provider value={[currentPage, setCurrentPageState]}>
       <NumPagesContext.Provider value={[numPages, setNumPagesState]}>
-        <div className="flex min-h-screen flex-col bg-background">
+        <div className="flex h-screen flex-col overflow-hidden bg-background">
           <AppTopBar activeSection="upload" />
 
           {/* Document header */}
@@ -586,8 +586,8 @@ export function JobPage({ jobId }: JobPageProps) {
 
           {/* Workbench body */}
           {analysisData && (
-            <div className="flex flex-1 items-stretch gap-5 p-5">
-              {/* PDF pane */}
+            <div className="flex min-h-0 flex-1 items-stretch gap-5 p-5">
+              {/* PDF pane — fixed; only its canvas scrolls when a page is zoomed */}
               <div className="flex w-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card">
                 <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2.5">
                   <ToolbarButton onClick={() => setCurrentPageState((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}>
@@ -640,10 +640,10 @@ export function JobPage({ jobId }: JobPageProps) {
                 </div>
               </div>
 
-              {/* Analysis panel */}
-              <div className="flex w-1/2 flex-col overflow-hidden">
+              {/* Analysis panel — the tab bar stays fixed; only this content region scrolls */}
+              <div className="flex min-h-0 w-1/2 flex-col overflow-hidden">
                 <TabBar activeTab={activeTab} onChange={setActiveTab} />
-                <div className="flex-1 overflow-y-auto pt-4">
+                <div className="min-h-0 flex-1 overflow-y-auto pt-4">
                   {activeTab === 'grouped' && <GroupedTab analysisData={analysisData} currentPage={currentPage} setCurrentPage={setCurrentPageState} expandedGroups={expandedGroups} setExpandedGroups={setExpandedGroups} isLoading={isLoadingJobDetails} isProcessing={isProcessing} />}
                   {activeTab === 'underwriter' && <UnderwriterTab analysisData={analysisData} isLoading={isLoadingJobDetails} isProcessing={isProcessing} />}
                   {activeTab === 'detection' && <DetectionTab detection={detection} contentRef={detectionContentRef} onExport={() => handleExportPdf(detectionContentRef, 'Impairment Detection Report')} isPdfGenerating={isPdfGenerating} deriveManualRoute={deriveManualRouteFromKbLocation} formatName={formatDocumentType} />}
