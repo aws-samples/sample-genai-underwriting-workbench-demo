@@ -1,19 +1,22 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { HeartPulse, House, Upload, FileText, X } from 'lucide-react'
+import { Upload, FileText, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { apiClient } from '@/utils/apiClient'
-import { AppTopBar, type InsuranceType } from './AppTopBar'
+import { AppTopBar } from './AppTopBar'
+
+// This solution is Life-only; the line of business is fixed.
+const INSURANCE_TYPE = 'life' as const
 
 /**
  * Landing / upload screen. Rebuilt from designs/underwriting workbench.pen
- * (frames 01 Landing — Life, 02 Landing — P&C, 03 Landing — File Selected):
- * centered hero, three borderless capability columns, and a single upload card
- * carrying the line-of-business toggle, dropzone, selected files and the one
- * primary action. Upload behaviour (presigned single/batch PUT, drag-drop) is
- * carried over unchanged from the legacy UploadPage.
+ * (frames 01 Landing — Life, 03 Landing — File Selected): centered hero, three
+ * borderless capability columns, and a single upload card with the dropzone,
+ * selected files and the one primary action. Upload behaviour (presigned
+ * single/batch PUT, drag-drop) is carried over unchanged from the legacy
+ * UploadPage. Life insurance is the only supported line of business.
  */
 export function LandingPage() {
   const { t } = useTranslation()
@@ -23,12 +26,8 @@ export function LandingPage() {
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [insuranceType, setInsuranceType] =
-    useState<InsuranceType>('property_casualty')
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<Record<string, string>>({})
-
-  const isLife = insuranceType === 'life'
 
   const acceptFiles = (incoming: File[]) => {
     setError(null)
@@ -91,7 +90,7 @@ export function LandingPage() {
         body: JSON.stringify({
           filename: file.name,
           contentType: file.type,
-          insuranceType,
+          insuranceType: INSURANCE_TYPE,
         }),
       },
     )
@@ -149,7 +148,7 @@ export function LandingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           files: files.map((f) => ({ filename: f.name })),
-          insuranceType,
+          insuranceType: INSURANCE_TYPE,
         }),
       },
     )
@@ -216,46 +215,30 @@ export function LandingPage() {
   const capabilities = [
     {
       title: t('landing.capabilities.documentAnalysis.title'),
-      body: isLife
-        ? t('landing.capabilities.documentAnalysis.bodyLife')
-        : t('landing.capabilities.documentAnalysis.bodyPropertyCasualty'),
+      body: t('landing.capabilities.documentAnalysis.bodyLife'),
     },
     {
-      title: isLife
-        ? t('landing.capabilities.analysis.titleLife')
-        : t('landing.capabilities.analysis.titlePropertyCasualty'),
-      body: isLife
-        ? t('landing.capabilities.analysis.bodyLife')
-        : t('landing.capabilities.analysis.bodyPropertyCasualty'),
+      title: t('landing.capabilities.analysis.titleLife'),
+      body: t('landing.capabilities.analysis.bodyLife'),
     },
     {
       title: t('landing.capabilities.interactiveAssistant.title'),
-      body: isLife
-        ? t('landing.capabilities.interactiveAssistant.bodyLife')
-        : t('landing.capabilities.interactiveAssistant.bodyPropertyCasualty'),
+      body: t('landing.capabilities.interactiveAssistant.bodyLife'),
     },
   ]
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AppTopBar
-        activeSection="upload"
-        insuranceType={insuranceType}
-        onInsuranceTypeChange={setInsuranceType}
-      />
+      <AppTopBar activeSection="upload" />
 
       {/* Hero */}
       <section className="flex flex-col items-center px-[120px] pb-[72px] pt-[104px]">
         <div className="flex w-[680px] flex-col items-center gap-5">
           <h1 className="text-center text-[46px] font-semibold leading-[1.12] tracking-[-1.4px] text-foreground">
-            {isLife
-              ? t('landing.hero.headingLife')
-              : t('landing.hero.headingPropertyCasualty')}
+            {t('landing.hero.headingLife')}
           </h1>
           <p className="w-[560px] text-center text-[16.5px] leading-[1.55] text-muted-foreground">
-            {isLife
-              ? t('landing.hero.subheadingLife')
-              : t('landing.hero.subheadingPropertyCasualty')}
+            {t('landing.hero.subheadingLife')}
           </p>
         </div>
 
@@ -287,27 +270,6 @@ export function LandingPage() {
           </div>
 
           <div className="flex flex-col gap-[18px] px-7 pb-7 pt-[18px]">
-            {/* Insurance type toggle */}
-            <div className="flex flex-col gap-2">
-              <span className="text-[12.5px] font-medium text-muted-foreground">
-                {t('landing.uploadCard.insuranceType')}
-              </span>
-              <div className="flex gap-3">
-                <TypePill
-                  active={isLife}
-                  icon={<HeartPulse className="size-[15px]" />}
-                  label={t('landing.uploadCard.lifeInsurance')}
-                  onClick={() => setInsuranceType('life')}
-                />
-                <TypePill
-                  active={!isLife}
-                  icon={<House className="size-[15px]" />}
-                  label={t('landing.uploadCard.propertyCasualty')}
-                  onClick={() => setInsuranceType('property_casualty')}
-                />
-              </div>
-            </div>
-
             {/* Dropzone */}
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -390,30 +352,5 @@ export function LandingPage() {
         </div>
       </section>
     </div>
-  )
-}
-
-interface TypePillProps {
-  active: boolean
-  icon: React.ReactNode
-  label: string
-  onClick: () => void
-}
-
-function TypePill({ active, icon, label, onClick }: TypePillProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex flex-1 items-center gap-2 rounded-sm px-3.5 py-2.5 text-[13px] transition-colors',
-        active
-          ? 'bg-secondary font-semibold text-foreground [&_svg]:text-foreground'
-          : 'font-medium text-muted-foreground hover:text-foreground [&_svg]:text-muted-foreground',
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
   )
 }
