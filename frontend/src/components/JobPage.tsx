@@ -1028,7 +1028,10 @@ function ChatTab({
               'max-w-[80%] rounded-lg px-3.5 py-2.5 text-[13px] leading-[1.55]',
               m.sender === 'ai' ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground',
             )}>
-              <Md>{m.text}</Md>
+              {/* AI replies are markdown; user messages are plain text and must
+                  inherit the bubble's primary-foreground for contrast (the Md
+                  renderer hardcodes muted-foreground, unreadable on primary). */}
+              {m.sender === 'ai' ? <Md>{m.text}</Md> : <p className="whitespace-pre-wrap">{m.text}</p>}
             </div>
           </div>
         ))}
