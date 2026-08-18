@@ -228,9 +228,20 @@ def get_job(job_id):
         # Add extracted data if available
         if 'extractedDataJsonStr' in item:
             try:
-                extracted_data = json.loads(item['extractedDataJsonStr']['S'])
+                extracted_data_str = item['extractedDataJsonStr']['S']
+                # Check if it's an S3 path
+                if extracted_data_str.startswith('s3://'):
+                    # Parse S3 path and fetch from S3
+                    s3_path = extracted_data_str.replace('s3://', '')
+                    bucket, key = s3_path.split('/', 1)
+                    response = s3.get_object(Bucket=bucket, Key=key)
+                    extracted_data = json.loads(response['Body'].read().decode('utf-8'))
+                else:
+                    # Legacy: direct JSON string
+                    extracted_data = json.loads(extracted_data_str)
                 job['extractedData'] = extracted_data
-            except:
+            except Exception as e:
+                print(f"Error loading extractedData: {e}")
                 job['extractedData'] = {}
         
         # Add analysis output if available

@@ -561,7 +561,50 @@ export class CdkStack extends cdk.Stack {
       layers: [strandsSDKLayer, boto3Layer],
     });
 
-    // 5b. Detect Impairments Lambda (Strands Agent with KB for impairment detection)
+    // 5a. Chunk Analysis Data Lambda (splits extracted data into chunks for parallel processing)
+    const chunkDataLambda = new lambda.Function(this, 'ChunkDataLambda', {
+      functionName: 'ai-underwriting-chunk-data',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/chunk-data'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
+        JOBS_TABLE_NAME: jobsTable.tableName,
+      },
+    });
+
+    // 5b. Analyze Chunk Lambda (worker that analyzes a single chunk)
+    const analyzeChunkLambda = new lambda.Function(this, 'AnalyzeChunkLambda', {
+      functionName: 'ai-underwriting-analyze-chunk',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/analyze-chunk'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 512,
+      environment: {
+        BEDROCK_ANALYSIS_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
+        JOBS_TABLE_NAME: jobsTable.tableName,
+      },
+    });
+
+    // 5c. Aggregate Analysis Lambda (merges chunk results)
+    const aggregateAnalysisLambda = new lambda.Function(this, 'AggregateAnalysisLambda', {
+      functionName: 'ai-underwriting-aggregate-analysis',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/aggregate-analysis'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        JOBS_TABLE_NAME: jobsTable.tableName,
+        TRACE_BUCKET: analysisTracesBucket.bucketName,
+      },
+    });
+
+    // 5d. Detect Impairments Lambda (Strands Agent with KB for impairment detection)
     const detectImpairmentsLambda = new lambda.Function(this, 'DetectImpairmentsLambda', {
       functionName: 'ai-underwriting-detect-impairments',
       runtime: lambda.Runtime.PYTHON_3_12,
@@ -579,6 +622,37 @@ export class CdkStack extends cdk.Stack {
         TRACE_BUCKET: analysisTracesBucket.bucketName
       },
       layers: [strandsSDKLayer, boto3Layer],
+    });
+
+    // 5e. Detect Chunk Lambda (worker that detects impairments in a single chunk)
+    const detectChunkLambda = new lambda.Function(this, 'DetectChunkLambda', {
+      functionName: 'ai-underwriting-detect-chunk',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/detect-chunk'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 512,
+      environment: {
+        BEDROCK_DETECTION_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        EXTRACTION_BUCKET: extractionBucket.bucketName,
+        KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+        JOBS_TABLE_NAME: jobsTable.tableName,
+      },
+      layers: [strandsSDKLayer, boto3Layer],
+    });
+
+    // 5f. Aggregate Detection Lambda (merges chunk detection results)
+    const aggregateDetectionLambda = new lambda.Function(this, 'AggregateDetectionLambda', {
+      functionName: 'ai-underwriting-aggregate-detection',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions/aggregate-detection'),
+      handler: 'index.lambda_handler',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        JOBS_TABLE_NAME: jobsTable.tableName,
+        TRACE_BUCKET: analysisTracesBucket.bucketName,
+      },
     });
 
     // 6. Act Lambda
@@ -649,10 +723,28 @@ export class CdkStack extends cdk.Stack {
     analyzeLambda.addToRolePolicy(dynamodbPolicyStatement);
     analyzeLambda.addToRolePolicy(s3PolicyStatement);
 
+    chunkDataLambda.addToRolePolicy(s3PolicyStatement);
+    chunkDataLambda.addToRolePolicy(dynamodbPolicyStatement);
+    
+    analyzeChunkLambda.addToRolePolicy(bedrockPolicyStatement);
+    analyzeChunkLambda.addToRolePolicy(s3PolicyStatement);
+    analyzeChunkLambda.addToRolePolicy(dynamodbPolicyStatement);
+    
+    aggregateAnalysisLambda.addToRolePolicy(dynamodbPolicyStatement);
+    aggregateAnalysisLambda.addToRolePolicy(s3PolicyStatement);
+
     detectImpairmentsLambda.addToRolePolicy(bedrockPolicyStatement);
     detectImpairmentsLambda.addToRolePolicy(bedrockKbRetrievePolicy);
     detectImpairmentsLambda.addToRolePolicy(dynamodbPolicyStatement);
     detectImpairmentsLambda.addToRolePolicy(s3PolicyStatement);
+
+    detectChunkLambda.addToRolePolicy(bedrockPolicyStatement);
+    detectChunkLambda.addToRolePolicy(bedrockKbRetrievePolicy);
+    detectChunkLambda.addToRolePolicy(s3PolicyStatement);
+    detectChunkLambda.addToRolePolicy(dynamodbPolicyStatement);
+    
+    aggregateDetectionLambda.addToRolePolicy(dynamodbPolicyStatement);
+    aggregateDetectionLambda.addToRolePolicy(s3PolicyStatement);
 
     actLambda.addToRolePolicy(bedrockPolicyStatement);
     actLambda.addToRolePolicy(dynamodbPolicyStatement);
@@ -698,6 +790,7 @@ export class CdkStack extends cdk.Stack {
       }
     });
 
+
     const extractTask = new stepfunctionsTasks.LambdaInvoke(this, 'ExtractWithBedrock', {
       lambdaFunction: bedrockExtractLambda,
       payloadResponseOnly: true,
@@ -710,12 +803,103 @@ export class CdkStack extends cdk.Stack {
 
     parallelExtract.itemProcessor(extractTask);
 
+    // Chunk analysis data step (splits extracted data into chunks)
+    const chunkAnalysisStep = new stepfunctionsTasks.LambdaInvoke(this, 'ChunkAnalysisData', {
+      lambdaFunction: chunkDataLambda,
+      payload: stepfunctions.TaskInput.fromObject({
+        'extractionResults.$': '$.extractionResults',
+        'classification.$': '$.classification',
+        'chunkType': 'analysis',
+      }),
+      payloadResponseOnly: true,
+      resultPath: '$.chunkMetadata',
+    });
+
+    // Parallel analysis step (Map state to analyze chunks in parallel)
+    const parallelAnalyze = new stepfunctions.Map(this, 'ParallelAnalysis', {
+      itemsPath: '$.chunkMetadata.chunks',
+      resultPath: '$.chunkResults',
+      maxConcurrency: 5,
+      parameters: {
+        'chunkId.$': '$$.Map.Item.Value.chunkId',
+        'chunkS3Key.$': '$$.Map.Item.Value.chunkS3Key',
+        'jobId.$': '$.chunkMetadata.jobId',
+        'totalChunks.$': '$.chunkMetadata.totalChunks',
+      }
+    });
+
+    const analyzeChunkTask = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeChunk', {
+      lambdaFunction: analyzeChunkLambda,
+      payloadResponseOnly: true,
+      resultPath: '$',
+    });
+
+    parallelAnalyze.itemProcessor(analyzeChunkTask);
+
+    // Aggregate analysis results step
+    const aggregateAnalysisStep = new stepfunctionsTasks.LambdaInvoke(this, 'AggregateAnalysis', {
+      lambdaFunction: aggregateAnalysisLambda,
+      payload: stepfunctions.TaskInput.fromObject({
+        'jobId.$': '$.chunkMetadata.jobId',
+        'chunkResults.$': '$.chunkResults',
+        'classification.$': '$.classification',
+      }),
+      payloadResponseOnly: true,
+      resultPath: '$.analysisOutput',
+    });
+
     // Analyze step (comprehensive analysis - risks, discrepancies, recommendations)
     // Runs first to avoid Bedrock throttling when running in parallel
     const analyzeStep = new stepfunctionsTasks.LambdaInvoke(this, 'AnalyzeData', {
       lambdaFunction: analyzeLambda,
       payloadResponseOnly: true,
       resultPath: '$.analysisOutput',
+    });
+
+    // Chunk detection data step (splits extracted data into chunks for detection)
+    const chunkDetectionStep = new stepfunctionsTasks.LambdaInvoke(this, 'ChunkDetectionData', {
+      lambdaFunction: chunkDataLambda,
+      payload: stepfunctions.TaskInput.fromObject({
+        'extractionResults.$': '$.extractionResults',
+        'classification.$': '$.classification',
+        'chunkType': 'detection',
+      }),
+      payloadResponseOnly: true,
+      resultPath: '$.detectionChunkMetadata',
+    });
+
+    // Parallel detection step (Map state to detect impairments in chunks in parallel)
+    const parallelDetect = new stepfunctions.Map(this, 'ParallelDetection', {
+      itemsPath: '$.detectionChunkMetadata.chunks',
+      resultPath: '$.detectionChunkResults',
+      maxConcurrency: 5,
+      parameters: {
+        'chunkId.$': '$$.Map.Item.Value.chunkId',
+        'chunkS3Key.$': '$$.Map.Item.Value.chunkS3Key',
+        'jobId.$': '$.detectionChunkMetadata.jobId',
+        'totalChunks.$': '$.detectionChunkMetadata.totalChunks',
+        'insuranceType.$': '$.classification.insuranceType',
+      }
+    });
+
+    const detectChunkTask = new stepfunctionsTasks.LambdaInvoke(this, 'DetectChunk', {
+      lambdaFunction: detectChunkLambda,
+      payloadResponseOnly: true,
+      resultPath: '$',
+    });
+
+    parallelDetect.itemProcessor(detectChunkTask);
+
+    // Aggregate detection results step
+    const aggregateDetectionStep = new stepfunctionsTasks.LambdaInvoke(this, 'AggregateDetection', {
+      lambdaFunction: aggregateDetectionLambda,
+      payload: stepfunctions.TaskInput.fromObject({
+        'jobId.$': '$.detectionChunkMetadata.jobId',
+        'chunkResults.$': '$.detectionChunkResults',
+        'classification.$': '$.classification',
+      }),
+      payloadResponseOnly: true,
+      resultPath: '$.analysisDetection',
     });
 
     // Detect impairments step (Strands Agent with KB)
@@ -744,8 +928,12 @@ export class CdkStack extends cdk.Stack {
     classifyStep
       .next(generateBatchesStep)
       .next(parallelExtract)
-      .next(analyzeStep)
-      .next(detectStep)
+      .next(chunkAnalysisStep)
+      .next(parallelAnalyze)
+      .next(aggregateAnalysisStep)
+      .next(chunkDetectionStep)
+      .next(parallelDetect)
+      .next(aggregateDetectionStep)
       .next(scoreStep)
       .next(actStep);
       

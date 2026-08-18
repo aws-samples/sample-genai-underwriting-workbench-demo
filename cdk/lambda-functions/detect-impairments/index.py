@@ -244,9 +244,30 @@ def _run_agent_detection(extracted_data: dict, insurance_type: str, language: st
     agent_start = time.time()
     print(f"[_run_agent_detection] Building agent for insurance_type={insurance_type}, language={language}")
     agent = _build_agent(insurance_type, language)
-    # Feed the raw JSON string directly to the agent (simpler and more faithful)
+    
+    # Sample data if too large (200K tokens ~= 800KB, target 180K tokens = 720KB for safety)
     message_str = json.dumps(extracted_data, ensure_ascii=False)
-    print(f"[_run_agent_detection] Agent input message size: {len(message_str)} bytes")
+    print(f"[_run_agent_detection] Original data size: {len(message_str)} bytes")
+    
+    max_chars = 500000
+    if len(message_str) > max_chars:
+        print(f"[_run_agent_detection] Data exceeds {max_chars} chars, sampling pages...")
+        target_ratio = max_chars / len(message_str)
+        print(f"[_run_agent_detection] Sampling ratio: {target_ratio:.2f}")
+        
+        sampled_data = {}
+        for doc_type, pages in extracted_data.items():
+            if isinstance(pages, list) and len(pages) > 0:
+                pages_to_keep = max(1, int(len(pages) * target_ratio))
+                sampled_data[doc_type] = pages[:pages_to_keep]
+                if len(pages) > pages_to_keep:
+                    sampled_data[doc_type].append({"_note": f"[{len(pages) - pages_to_keep} additional pages omitted]"})
+            else:
+                sampled_data[doc_type] = pages
+        
+        message_str = json.dumps(sampled_data, ensure_ascii=False)
+        print(f"[_run_agent_detection] Sampled data size: {len(message_str)} bytes")
+    
     print(f"[_run_agent_detection] Invoking Strands agent...")
     invoke_start = time.time()
     try:
