@@ -93,9 +93,9 @@ We have included sample PDF documents in the `sample_documents/` folder. These c
 - `life_submission.pdf`: A sample life insurance application.
 - `p&c_submission.pdf`: A sample property & casualty insurance application.
 
-# 🏷️ Insurance Types: Life vs P&C
+# 🏷️ Insurance Types: Life
 
-This demo supports both Life and Property & Casualty (P&C) underwriting modes. The selected mode controls prompts, tools, and knowledge usage end‑to‑end.
+<!-- This demo supports both Life and Property & Casualty (P&C) underwriting modes. The selected mode controls prompts, tools, and knowledge usage end‑to‑end. -->
 
 ## Life Underwriting Manual
 
@@ -119,11 +119,11 @@ This demo supports both Life and Property & Casualty (P&C) underwriting modes. T
 - Chat (`cdk/lambda-functions/chat/index.py`)
   - Tailors guidance and sample tools by insurance type (e.g., Life: `calculate_mortality_risk`; P&C: `calculate_property_premium`).
 
-## Flag flow (Life/P&C)
+<!-- ## Flag flow
 
 1. Frontend sends `insuranceType` with upload.
 2. API stores `insuranceType` on the job record in DynamoDB.
-3. Downstream lambdas read `insuranceType` and adapt prompts/tools accordingly (KB only in Life).
+3. Downstream lambdas read `insuranceType` and adapt prompts/tools accordingly (KB only in Life). -->
 
 # 🚀 Deployment
 

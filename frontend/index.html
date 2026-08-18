@@ -4,7 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <title>AWS GenAI Underwriting Assistant</title>
+    <script>
+      // Apply the saved (or system) theme before first paint to avoid a flash
+      // of the wrong theme. Mirrors the logic in src/lib/theme.ts.
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme')
+          var dark =
+            stored === 'dark' ||
+            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -18,3 +18,6 @@ node_modules
 cdk-outputs.json
 frontend/public/manual
 frontend/public/manual-manifest.json
+
+designs/
+CLAUDE.md

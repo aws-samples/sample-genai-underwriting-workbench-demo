@@ -19,7 +19,10 @@
     "title": "GenAI Underwriting Workbench",
     "uploadNew": "Upload New",
     "viewAllJobs": "View All Jobs",
-    "underwritingManual": "Underwriting Manual"
+    "underwritingManual": "Underwriting Manual",
+    "jobs": "Jobs",
+    "manual": "Manual",
+    "upload": "Upload"
   },
   "upload": {
     "title": "Upload Documents",
@@ -120,6 +123,23 @@
       "completed": "Completed",
       "inProgress": "In Progress",
       "failed": "Failed"
+    },
+    "heading": "Underwriting jobs",
+    "subtitle_one": "{{count}} submission",
+    "subtitle_other": "{{count}} submissions",
+    "subtitleAllComplete": "{{count}} submissions · all analyses complete",
+    "searchPlaceholder": "Search by Job ID or filename",
+    "noResults": "No jobs match your search.",
+    "columns": {
+      "jobId": "JOB ID",
+      "document": "DOCUMENT",
+      "uploaded": "UPLOADED",
+      "status": "STATUS"
+    },
+    "statusLabel": {
+      "complete": "Complete",
+      "inProgress": "In Progress",
+      "failed": "Failed"
     }
   },
   "analysis": {
@@ -218,14 +238,18 @@
       "evidence": "Evidence",
       "scoringFactors": "Scoring Factors",
       "discrepancies": "Discrepancies",
-      "viewGuidelines": "View Guidelines for {{name}}"
+      "viewGuidelines": "View Guidelines for {{name}}",
+      "guidelines": "Guidelines"
     },
     "scoring": {
       "noResults": "No scoring results.",
       "noImpairments": "No impairments scored.",
       "overallScore": "Overall Score",
       "impairmentScores": "Impairment Scores",
-      "reason": "Reason"
+      "reason": "Reason",
+      "overallLabel": "Overall score",
+      "overallSubline_one": "Sum of impairment debits across {{count}} finding",
+      "overallSubline_other": "Sum of impairment debits across {{count}} findings"
     },
     "chat": {
       "greeting": "Hi! I'm your AI assistant. I've analyzed this document and can help answer any questions you have about it.",
@@ -237,7 +261,17 @@
       "typing": "Typing...",
       "error": "Chat error. Please try again.",
       "userAvatar": "U",
-      "aiAvatar": "AI"
+      "aiAvatar": "AI",
+      "suggestions": {
+        "summarize": "Summarize medical history",
+        "discrepancies": "List all discrepancies",
+        "score": "Explain the score"
+      },
+      "suggestionsPropertyCasualty": {
+        "summarize": "Summarize property details",
+        "discrepancies": "List all discrepancies",
+        "score": "Explain the score"
+      }
     },
     "agentAction": {
       "title": "AI Agent Action Complete",
@@ -317,7 +351,62 @@
       },
       "processing": "Processing",
       "unknownStatus": "Status: {{status}}"
+    },
+    "jobLabel": "Job",
+    "subline": "{{filename}} · {{pages}} pages · uploaded {{uploaded}}",
+    "sublineNoPages": "{{filename}} · uploaded {{uploaded}}",
+    "badges": {
+      "life": "Life Insurance",
+      "propertyCasualty": "Property & Casualty"
+    },
+    "agentToast": {
+      "title": "AI Agent Action Complete",
+      "subtitle": "Our AI agent has processed your document and taken action",
+      "emailSent": "Email Sent! The agent has sent an email based on the document analysis.",
+      "reviewed": "Application Reviewed: the agent has determined this application requires review.",
+      "actionTaken": "Action Taken: the agent has completed processing this document.",
+      "viewDetails": "View Details",
+      "close": "Close notification"
+    },
+    "find": "Find",
+    "zoomIn": "Zoom in",
+    "rotate": "Rotate"
+  },
+  "landing": {
+    "hero": {
+      "headingLife": "Streamline Your Life Insurance Underwriting",
+      "headingPropertyCasualty": "Streamline Your Property & Casualty Underwriting",
+      "subheadingLife": "Turn complex application packets into underwriting decisions: extracted, analyzed, and scored automatically.",
+      "subheadingPropertyCasualty": "Turn complex ACORD submissions into underwriting decisions: extracted, analyzed, and scored automatically."
+    },
+    "capabilities": {
+      "documentAnalysis": {
+        "title": "Document Analysis",
+        "bodyLife": "Complete application packets, APS and lab reports classified on ingest.",
+        "bodyPropertyCasualty": "Complete P&C packets, ACORD forms and inspections classified on ingest."
+      },
+      "analysis": {
+        "titleLife": "Underwriter Analysis",
+        "titlePropertyCasualty": "Property Assessment",
+        "bodyLife": "Mortality risk, medical timelines and cross-document discrepancies.",
+        "bodyPropertyCasualty": "Property risk, environmental exposure and cross-document discrepancies."
+      },
+      "interactiveAssistant": {
+        "title": "Interactive Assistant",
+        "bodyLife": "Ask questions across the whole submission and get sourced answers.",
+        "bodyPropertyCasualty": "Ask questions across valuations, claims history and inspection reports."
+      }
+    },
+    "uploadCard": {
+      "title": "Upload documents",
+      "caption": "PDF only. Multiple files supported.",
+      "insuranceType": "Insurance type",
+      "lifeInsurance": "Life Insurance",
+      "propertyCasualty": "Property & Casualty",
+      "dropzone": "Click to select or drag PDFs here",
+      "analyze": "Analyze document",
+      "analyze_plural": "Analyze {{count}} documents",
+      "removeFile": "Remove file"
     }
   }
 }
-

@@ -551,14 +551,6 @@
               "routePath": "3-medical-impairments/psych/adhd"
             },
             {
-              "name": "anxiety",
-              "title": "Anxiety",
-              "type": "dir",
-              "routePath": "3-medical-impairments/psych/anxiety",
-              "hasReadme": false,
-              "children": []
-            },
-            {
               "name": "anxiety.md",
               "title": "Anxiety",
               "type": "file",
@@ -571,14 +563,6 @@
               "routePath": "3-medical-impairments/psych/autism_spectrum_disorder"
             },
             {
-              "name": "bipolar",
-              "title": "Bipolar",
-              "type": "dir",
-              "routePath": "3-medical-impairments/psych/bipolar",
-              "hasReadme": false,
-              "children": []
-            },
-            {
               "name": "bipolar.md",
               "title": "Bipolar",
               "type": "file",
@@ -589,14 +573,6 @@
               "title": "Bipolar Disorder",
               "type": "file",
               "routePath": "3-medical-impairments/psych/bipolar_disorder"
-            },
-            {
-              "name": "depression",
-              "title": "Depression",
-              "type": "dir",
-              "routePath": "3-medical-impairments/psych/depression",
-              "hasReadme": false,
-              "children": []
             },
             {
               "name": "depression.md",
@@ -635,14 +611,6 @@
               "routePath": "3-medical-impairments/psych/schizophrenia"
             },
             {
-              "name": "substance_use",
-              "title": "Substance Use",
-              "type": "dir",
-              "routePath": "3-medical-impairments/psych/substance_use",
-              "hasReadme": false,
-              "children": []
-            },
-            {
               "name": "substance_use.md",
               "title": "Substance Use",
               "type": "file",
@@ -653,14 +621,6 @@
               "title": "Suicide Attempt",
               "type": "file",
               "routePath": "3-medical-impairments/psych/suicide_attempt"
-            },
-            {
-              "name": "suicide_history",
-              "title": "Suicide History",
-              "type": "dir",
-              "routePath": "3-medical-impairments/psych/suicide_history",
-              "hasReadme": false,
-              "children": []
             }
           ]
         },
@@ -672,40 +632,16 @@
           "hasReadme": true,
           "children": [
             {
-              "name": "asthma",
-              "title": "Asthma",
-              "type": "dir",
-              "routePath": "3-medical-impairments/respiratory/asthma",
-              "hasReadme": false,
-              "children": []
-            },
-            {
               "name": "asthma.md",
               "title": "Asthma",
               "type": "file",
               "routePath": "3-medical-impairments/respiratory/asthma"
             },
             {
-              "name": "copd",
-              "title": "Copd",
-              "type": "dir",
-              "routePath": "3-medical-impairments/respiratory/copd",
-              "hasReadme": false,
-              "children": []
-            },
-            {
               "name": "copd.md",
               "title": "Copd",
               "type": "file",
               "routePath": "3-medical-impairments/respiratory/copd"
-            },
-            {
-              "name": "sleep_apnea",
-              "title": "Sleep Apnea",
-              "type": "dir",
-              "routePath": "3-medical-impairments/respiratory/sleep_apnea",
-              "hasReadme": false,
-              "children": []
             },
             {
               "name": "sleep_apnea.md",
@@ -763,14 +699,6 @@
       "routePath": "5-appendices",
       "hasReadme": true,
       "children": [
-        {
-          "name": "glossary",
-          "title": "Glossary",
-          "type": "dir",
-          "routePath": "5-appendices/glossary",
-          "hasReadme": false,
-          "children": []
-        },
         {
           "name": "glossary.md",
           "title": "Glossary",
