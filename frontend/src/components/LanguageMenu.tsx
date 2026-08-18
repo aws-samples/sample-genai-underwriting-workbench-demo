@@ -100,7 +100,7 @@ export function LanguageMenu() {
           className="flex items-center gap-1.5 rounded-sm px-2.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           <Globe className="size-3.5" />
-          <span>{currentLocale.nativeName}</span>
+          <span className="hidden sm:inline">{currentLocale.nativeName}</span>
           <ChevronDown
             className={cn(
               'size-3 transition-transform',

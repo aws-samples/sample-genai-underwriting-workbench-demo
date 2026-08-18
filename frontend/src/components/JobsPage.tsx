@@ -5,6 +5,7 @@ import { Search, FileText, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/utils/apiClient'
 import { AppTopBar } from './AppTopBar'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface Job {
   jobId: string
@@ -124,13 +125,13 @@ export function JobsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <AppTopBar activeSection="jobs" />
 
-      <main className="flex flex-col items-center px-10 pb-[88px] pt-14">
-        <div className="flex w-[920px] flex-col gap-7">
+      <main className="flex flex-col items-center px-6 pb-[88px] pt-14 sm:px-10">
+        <div className="flex w-full max-w-[920px] flex-col gap-7">
           {/* Header: heading + subtitle on the left, search on the right */}
-          <div className="flex items-end gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex flex-1 flex-col gap-1.5">
               <h1 className="text-[26px] font-semibold tracking-[-0.6px] text-foreground">
                 {t('jobs.heading')}
@@ -142,7 +143,7 @@ export function JobsPage() {
               </p>
             </div>
 
-            <div className="flex w-[296px] items-center gap-2 rounded-sm border border-input bg-background px-3 py-[9px]">
+            <div className="flex w-full items-center gap-2 rounded-sm border border-input bg-background px-3 py-[9px] sm:w-[296px]">
               <Search className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="text"
@@ -156,9 +157,7 @@ export function JobsPage() {
 
           {/* List */}
           {loading ? (
-            <p className="py-8 text-[13.5px] text-muted-foreground">
-              {t('jobs.loading')}
-            </p>
+            <JobsListSkeleton />
           ) : error ? (
             <div className="flex flex-col items-start gap-3 py-8">
               <p className="text-[13.5px] text-destructive">{error}</p>
@@ -184,7 +183,7 @@ export function JobsPage() {
               </button>
             </div>
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col duration-500 animate-in fade-in-0">
               {/* Column headers */}
               <div className="flex items-center gap-3.5 border-b border-border px-1 pb-[9px]">
                 <div className="w-4 shrink-0" />
@@ -196,7 +195,7 @@ export function JobsPage() {
                     {t('jobs.columns.document')}
                   </span>
                 </div>
-                <span className="w-[110px] text-right text-[11px] font-semibold tracking-[0.4px] text-muted-foreground">
+                <span className="hidden w-[110px] text-right text-[11px] font-semibold tracking-[0.4px] text-muted-foreground sm:block">
                   {t('jobs.columns.uploaded')}
                 </span>
                 <span className="w-[92px] text-right text-[11px] font-semibold tracking-[0.4px] text-muted-foreground">
@@ -261,7 +260,7 @@ function JobRow({ job, formatDate, onOpen }: JobRowProps) {
         </span>
       </div>
 
-      <span className="w-[110px] shrink-0 text-right text-[12.5px] text-muted-foreground">
+      <span className="hidden w-[110px] shrink-0 text-right text-[12.5px] text-muted-foreground sm:block">
         {formatDate(job.uploadTimestamp)}
       </span>
 
@@ -274,5 +273,28 @@ function JobRow({ job, formatDate, onOpen }: JobRowProps) {
 
       <ChevronRight className="size-[15px] shrink-0 text-muted-foreground" />
     </button>
+  )
+}
+
+/** Placeholder rows that mirror the jobs list layout while data loads. */
+function JobsListSkeleton() {
+  return (
+    <div className="flex flex-col" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3.5 border-b border-border px-1 py-[15px]"
+        >
+          <Skeleton className="size-4 shrink-0 rounded-full" />
+          <div className="flex flex-1 items-center gap-3">
+            <Skeleton className="h-3.5 w-24 shrink-0" />
+            <Skeleton className={cn('h-3.5', i % 2 ? 'w-40' : 'w-56')} />
+          </div>
+          <Skeleton className="hidden h-3.5 w-[90px] sm:block" />
+          <Skeleton className="h-3.5 w-[70px]" />
+          <div className="w-[15px] shrink-0" />
+        </div>
+      ))}
+    </div>
   )
 }

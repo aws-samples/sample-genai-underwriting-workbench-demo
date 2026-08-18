@@ -504,7 +504,7 @@ export function JobPage({ jobId }: JobPageProps) {
   // ── Loading / error gates ──
   if (isLoadingJobDetails && !analysisData) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-[100dvh] flex-col bg-background">
         <AppTopBar activeSection="upload" />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-12">
           <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -516,7 +516,7 @@ export function JobPage({ jobId }: JobPageProps) {
 
   if (error && showError && !analysisData) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-[100dvh] flex-col bg-background">
         <AppTopBar activeSection="upload" />
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-12">
           <FileWarning className="size-8 text-destructive" />
@@ -541,11 +541,11 @@ export function JobPage({ jobId }: JobPageProps) {
   return (
     <PageContext.Provider value={[currentPage, setCurrentPageState]}>
       <NumPagesContext.Provider value={[numPages, setNumPagesState]}>
-        <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:overflow-hidden">
           <AppTopBar activeSection="upload" />
 
           {/* Document header */}
-          <div className="flex items-center gap-4 border-b border-border bg-card px-10 py-5">
+          <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-5 sm:px-10">
             <div className="flex flex-1 flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-[22px] font-medium text-muted-foreground">{t('jobPage.jobLabel')}</span>
@@ -567,8 +567,8 @@ export function JobPage({ jobId }: JobPageProps) {
 
           {/* Processing stepper */}
           {isProcessing && (
-            <div className="flex justify-center px-10 pt-7">
-              <div className="w-[620px]">
+            <div className="flex justify-center px-4 pt-7 sm:px-10">
+              <div className="w-full max-w-[620px]">
                 <ProcessingStepper step={currentStep} title={currentPhase} details={phaseDetails} />
               </div>
             </div>
@@ -586,9 +586,10 @@ export function JobPage({ jobId }: JobPageProps) {
 
           {/* Workbench body */}
           {analysisData && (
-            <div className="flex min-h-0 flex-1 items-stretch gap-5 p-5">
-              {/* PDF pane — fixed; only its canvas scrolls when a page is zoomed */}
-              <div className="flex w-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex min-h-0 flex-1 flex-col items-stretch gap-5 p-4 sm:p-5 lg:flex-row">
+              {/* PDF pane — fixed; only its canvas scrolls when a page is zoomed.
+                  Below lg the panes stack and the page scrolls. */}
+              <div className="flex h-[70vh] w-full flex-col overflow-hidden rounded-lg border border-border bg-card lg:h-auto lg:w-1/2">
                 <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2.5">
                   <ToolbarButton onClick={() => setCurrentPageState((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}>
                     <ChevronLeft className="size-3.5" /> {t('jobPage.previous')}
@@ -641,7 +642,7 @@ export function JobPage({ jobId }: JobPageProps) {
               </div>
 
               {/* Analysis panel — the tab bar stays fixed; only this content region scrolls */}
-              <div className="flex min-h-0 w-1/2 flex-col overflow-hidden">
+              <div className="flex h-[70vh] min-h-0 w-full flex-col overflow-hidden lg:h-auto lg:w-1/2">
                 <TabBar activeTab={activeTab} onChange={setActiveTab} />
                 <div className="min-h-0 flex-1 overflow-y-auto pt-4">
                   {activeTab === 'grouped' && <GroupedTab analysisData={analysisData} currentPage={currentPage} setCurrentPage={setCurrentPageState} expandedGroups={expandedGroups} setExpandedGroups={setExpandedGroups} isLoading={isLoadingJobDetails} isProcessing={isProcessing} />}

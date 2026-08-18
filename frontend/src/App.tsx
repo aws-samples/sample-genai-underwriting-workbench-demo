@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom'
-import './styles/App.css'
 import ManualPage from './components/ManualPage'
 import { JobPage } from './components/JobPage'
 import { LandingPage } from './components/LandingPage'

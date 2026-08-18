@@ -151,7 +151,7 @@ function Sidebar({
   }
 
   return (
-    <aside className="w-[300px] shrink-0 self-start overflow-y-auto border-r border-sidebar-border bg-sidebar px-3 py-4 [height:calc(100vh-64px)] sticky top-16">
+    <aside className="hidden w-[260px] shrink-0 self-start overflow-y-auto border-r border-sidebar-border bg-sidebar px-3 py-4 [height:calc(100dvh-64px)] sticky top-16 md:block lg:w-[300px]">
       <h2 className="px-2 pb-2 text-[13px] font-semibold text-sidebar-foreground">
         Underwriting Manual
       </h2>
@@ -281,7 +281,7 @@ export default function ManualPage() {
   const components = useMemo(() => markdownComponents(handleMarkdownLink), [])
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <AppTopBar activeSection="manual" />
 
       {error ? (
@@ -295,7 +295,7 @@ export default function ManualPage() {
       ) : (
         <div className="flex flex-1 items-stretch">
           <Sidebar root={manifest} currentPath={slug} onNavigate={(rp) => navigate(`/manual/${rp}`)} />
-          <main className="min-w-0 flex-1 px-14 py-10">
+          <main className="min-w-0 flex-1 px-6 py-8 sm:px-10 lg:px-14 lg:py-10">
             {mdError ? (
               <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-[13.5px] text-destructive">
                 {mdError}

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ShieldCheck, List, Stethoscope, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LanguageMenu } from './LanguageMenu'
+import { ThemeToggle } from './ThemeToggle'
 
 type NavSection = 'upload' | 'jobs' | 'manual'
 
@@ -24,12 +25,12 @@ export function AppTopBar({ activeSection }: AppTopBarProps) {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      'flex items-center rounded-sm px-4 py-2 text-[13.5px] font-medium transition-colors',
+      'flex items-center rounded-sm px-2.5 py-2 text-[13.5px] font-medium transition-colors sm:px-4',
       active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
     )
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-10">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-10">
       {/* Left cluster: brand */}
       <button
         type="button"
@@ -37,7 +38,7 @@ export function AppTopBar({ activeSection }: AppTopBarProps) {
         className="flex items-center gap-2.5 text-foreground"
       >
         <ShieldCheck className="size-[18px]" strokeWidth={2} />
-        <span className="text-[15px] font-semibold tracking-[-0.2px]">
+        <span className="hidden text-[15px] font-semibold tracking-[-0.2px] sm:inline">
           {t('header.title')}
         </span>
       </button>
@@ -63,15 +64,16 @@ export function AppTopBar({ activeSection }: AppTopBarProps) {
           <div className="h-[18px] w-px bg-border" />
         </div>
 
+        <ThemeToggle />
         <LanguageMenu />
 
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="ml-0.5 flex items-center gap-1.5 rounded-sm bg-primary px-4 py-2 text-[13.5px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="ml-0.5 flex items-center gap-1.5 rounded-sm bg-primary px-2.5 py-2 text-[13.5px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
         >
           <Upload className="size-3.5" />
-          {t('header.upload')}
+          <span className="hidden sm:inline">{t('header.upload')}</span>
         </button>
       </div>
     </header>

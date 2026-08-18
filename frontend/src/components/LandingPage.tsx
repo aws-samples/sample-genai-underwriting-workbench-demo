@@ -228,22 +228,22 @@ export function LandingPage() {
   ]
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
       <AppTopBar activeSection="upload" />
 
       {/* Hero */}
-      <section className="flex flex-col items-center px-[120px] pb-[72px] pt-[104px]">
-        <div className="flex w-[680px] flex-col items-center gap-5">
-          <h1 className="text-center text-[46px] font-semibold leading-[1.12] tracking-[-1.4px] text-foreground">
+      <section className="flex flex-col items-center px-6 pb-14 pt-16 sm:px-10 sm:pb-[72px] lg:px-[120px] lg:pt-[104px]">
+        <div className="flex w-full max-w-[680px] flex-col items-center gap-5 duration-700 animate-in fade-in-0 slide-in-from-bottom-2">
+          <h1 className="text-center text-[32px] font-semibold leading-[1.12] tracking-[-1px] text-foreground sm:text-[46px] sm:tracking-[-1.4px]">
             {t('landing.hero.headingLife')}
           </h1>
-          <p className="w-[560px] text-center text-[16.5px] leading-[1.55] text-muted-foreground">
+          <p className="w-full max-w-[560px] text-center text-[15px] leading-[1.55] text-muted-foreground sm:text-[16.5px]">
             {t('landing.hero.subheadingLife')}
           </p>
         </div>
 
         {/* Capabilities */}
-        <div className="flex w-[820px] justify-center gap-14 pt-14">
+        <div className="flex w-full max-w-[820px] flex-col justify-center gap-8 pt-12 sm:flex-row sm:gap-14 sm:pt-14">
           {capabilities.map((cap) => (
             <div key={cap.title} className="flex flex-1 flex-col gap-[7px]">
               <h3 className="text-sm font-semibold leading-[1.45] text-foreground">
@@ -258,8 +258,8 @@ export function LandingPage() {
       </section>
 
       {/* Upload card */}
-      <section className="flex flex-col items-center px-[120px] pb-[120px] pt-2">
-        <div className="w-[460px] rounded-lg border border-border bg-card shadow-[0_1px_1.75px_0_rgba(0,0,0,0.05)]">
+      <section className="flex flex-col items-center px-6 pb-16 pt-2 sm:px-10 sm:pb-[120px] lg:px-[120px]">
+        <div className="w-full max-w-[460px] rounded-lg border border-border bg-card shadow-[0_1px_1.75px_0_rgba(0,0,0,0.05)]">
           <div className="flex flex-col px-7 pt-7">
             <h2 className="text-base font-semibold leading-[1.4] text-foreground">
               {t('landing.uploadCard.title')}
@@ -314,7 +314,7 @@ export function LandingPage() {
                       {file.name}
                       {uploadProgress[file.name] && (
                         <span className="ml-1 font-normal text-muted-foreground">
-                          — {uploadProgress[file.name]}
+                          · {uploadProgress[file.name]}
                         </span>
                       )}
                     </span>

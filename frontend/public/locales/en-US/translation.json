@@ -376,8 +376,8 @@
     "hero": {
       "headingLife": "Streamline Your Life Insurance Underwriting",
       "headingPropertyCasualty": "Streamline Your Property & Casualty Underwriting",
-      "subheadingLife": "Turn complex application packets into underwriting decisions — extracted, analyzed, and scored automatically.",
-      "subheadingPropertyCasualty": "Turn complex ACORD submissions into underwriting decisions — extracted, analyzed, and scored automatically."
+      "subheadingLife": "Turn complex application packets into underwriting decisions: extracted, analyzed, and scored automatically.",
+      "subheadingPropertyCasualty": "Turn complex ACORD submissions into underwriting decisions: extracted, analyzed, and scored automatically."
     },
     "capabilities": {
       "documentAnalysis": {

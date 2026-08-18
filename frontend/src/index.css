@@ -101,7 +101,30 @@
   * {
     @apply border-border;
   }
+  html {
+    height: 100%;
+  }
+  body,
+  #root {
+    @apply min-h-full;
+  }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/*
+ * Honor prefers-reduced-motion globally: neutralize entrance animations,
+ * spinners, and transitions for users who ask for less motion. Essential
+ * indicators still read via their static form + accompanying text.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
